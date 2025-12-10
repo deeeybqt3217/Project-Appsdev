@@ -1,0 +1,186 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\barangayanems\\data\\passwordhasher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\data\\passwordhasher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|c:\\users\\mingk\\onedrive\\desktop\\project\\barangayan-ralph-main\\2\\barangayanems\\barangayanems\\dashboard\\dashboardform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\dashboard\\dashboardform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|c:\\users\\mingk\\onedrive\\desktop\\project\\barangayan-ralph-main\\2\\barangayanems\\barangayanems\\dashboard\\dashboardform.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\dashboard\\dashboardform.designer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|c:\\users\\mingk\\onedrive\\desktop\\project\\barangayan-ralph-main\\2\\barangayanems\\barangayanems\\data\\databasebootstrapper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\data\\databasebootstrapper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\barangayanems\\packages.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\packages.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\barangayanems\\createaccount\\createaccountform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\createaccount\\createaccountform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\barangayanems\\loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\loginform.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\barangayanems\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\barangayanems\\data\\userrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{82693F1D-C430-4BAB-B9B5-1E0101F40254}|BarangayanEMS\\BarangayanEMS.csproj|solutionrelative:barangayanems\\data\\userrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PasswordHasher.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Data\\PasswordHasher.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\Data\\PasswordHasher.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Data\\PasswordHasher.cs",
+              "RelativeToolTip": "BarangayanEMS\\Data\\PasswordHasher.cs",
+              "ViewState": "AgIAACYAAAAAAAAAAIAzwDcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T09:29:51.329Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DashboardForm.Designer.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Dashboard\\DashboardForm.Designer.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\Dashboard\\DashboardForm.Designer.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Dashboard\\DashboardForm.Designer.cs",
+              "RelativeToolTip": "BarangayanEMS\\Dashboard\\DashboardForm.Designer.cs",
+              "ViewState": "AgIAACkBAAAAAAAAAAAawAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T10:54:19.689Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "DashboardForm.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Dashboard\\DashboardForm.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\Dashboard\\DashboardForm.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Dashboard\\DashboardForm.cs",
+              "RelativeToolTip": "BarangayanEMS\\Dashboard\\DashboardForm.cs",
+              "ViewState": "AgIAAHkGAAAAAAAAAAAlwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T10:36:10.395Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "DatabaseBootstrapper.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Data\\DatabaseBootstrapper.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\Data\\DatabaseBootstrapper.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Data\\DatabaseBootstrapper.cs",
+              "RelativeToolTip": "BarangayanEMS\\Data\\DatabaseBootstrapper.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T09:29:40.529Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "packages.config",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\packages.config",
+              "RelativeDocumentMoniker": "BarangayanEMS\\packages.config",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\packages.config",
+              "RelativeToolTip": "BarangayanEMS\\packages.config",
+              "ViewState": "AgIAAAAAAAAAAAAAAIAwwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000601|",
+              "WhenOpened": "2025-12-10T09:31:13.159Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "CreateAccountForm.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\CreateAccount\\CreateAccountForm.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\CreateAccount\\CreateAccountForm.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\CreateAccount\\CreateAccountForm.cs",
+              "RelativeToolTip": "BarangayanEMS\\CreateAccount\\CreateAccountForm.cs",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAawAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T09:31:03.846Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "LoginForm.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\LoginForm.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\LoginForm.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\LoginForm.cs",
+              "RelativeToolTip": "BarangayanEMS\\LoginForm.cs",
+              "ViewState": "AgIAAK8BAAAAAAAAAAAEwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T09:30:41.492Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Program.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\Program.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Program.cs",
+              "RelativeToolTip": "BarangayanEMS\\Program.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAlwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T09:30:22.356Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "UserRepository.cs",
+              "DocumentMoniker": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Data\\UserRepository.cs",
+              "RelativeDocumentMoniker": "BarangayanEMS\\Data\\UserRepository.cs",
+              "ToolTip": "C:\\Users\\mingk\\OneDrive\\Desktop\\Project\\Barangayan-Ralph-main\\2\\BarangayanEMS\\BarangayanEMS\\Data\\UserRepository.cs",
+              "RelativeToolTip": "BarangayanEMS\\Data\\UserRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAI0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-10T09:30:11.059Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

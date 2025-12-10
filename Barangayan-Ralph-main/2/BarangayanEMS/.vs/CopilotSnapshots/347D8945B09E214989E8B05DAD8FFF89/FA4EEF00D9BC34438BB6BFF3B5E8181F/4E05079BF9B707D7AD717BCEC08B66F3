@@ -1,0 +1,126 @@
+﻿using System;
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace BarangayanEMS
+{
+    public class DocumentRequestForm : Form
+    {
+        private readonly ListView _requestsList;
+        private readonly Button _btnNewRequest;
+
+        public DocumentRequestForm()
+        {
+            Text = "Document Requests";
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterParent;
+            BackColor = Color.White;
+            Size = new Size(720, 480);
+            Font = new Font("Segoe UI", 9f);
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = "Document Requests",
+                Font = new Font("Segoe UI Semibold", 16f),
+                ForeColor = Color.FromArgb(34, 34, 34),
+                Location = new Point(24, 20)
+            };
+
+            Label lblHint = new Label
+            {
+                AutoSize = true,
+                Text = "Track submitted requests or start a new one.",
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.DimGray,
+                Location = new Point(26, 55)
+            };
+
+            _requestsList = new ListView
+            {
+                View = View.Details,
+                FullRowSelect = true,
+                HeaderStyle = ColumnHeaderStyle.Nonclickable,
+                HideSelection = false,
+                MultiSelect = false,
+                BorderStyle = BorderStyle.FixedSingle,
+                Location = new Point(24, 90),
+                Size = new Size(660, 290)
+            };
+            _requestsList.Columns.Add("Document", 270, HorizontalAlignment.Left);
+            _requestsList.Columns.Add("Status", 150, HorizontalAlignment.Left);
+            _requestsList.Columns.Add("Updated", 180, HorizontalAlignment.Left);
+
+            _btnNewRequest = new Button
+            {
+                Text = "New Request",
+                Size = new Size(140, 38),
+                Location = new Point(24, 392),
+                BackColor = Color.FromArgb(63, 153, 89),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            _btnNewRequest.FlatAppearance.BorderSize = 0;
+            _btnNewRequest.Click += BtnNewRequest_Click;
+
+            Button btnClose = new Button
+            {
+                Text = "Close",
+                Size = new Size(100, 38),
+                Location = new Point(584, 392),
+                DialogResult = DialogResult.Cancel
+            };
+
+            Controls.Add(lblTitle);
+            Controls.Add(lblHint);
+            Controls.Add(_requestsList);
+            Controls.Add(_btnNewRequest);
+            Controls.Add(btnClose);
+
+            AcceptButton = _btnNewRequest;
+            CancelButton = btnClose;
+
+            Load += DocumentRequestForm_Load;
+        }
+
+        private void DocumentRequestForm_Load(object sender, EventArgs e)
+        {
+            PopulateDemoData();
+        }
+
+        private void PopulateDemoData()
+        {
+            _requestsList.Items.Clear();
+            _requestsList.Items.Add(new ListViewItem(new[]
+            {
+                "Barangay Clearance",
+                "Submitted",
+                DateTime.Today.AddDays(-2).ToString("MMM dd, yyyy")
+            }));
+            _requestsList.Items.Add(new ListViewItem(new[]
+            {
+                "Business Permit",
+                "Processing",
+                DateTime.Today.AddDays(-5).ToString("MMM dd, yyyy")
+            }));
+            _requestsList.Items.Add(new ListViewItem(new[]
+            {
+                "Residency Certificate",
+                "Ready for pickup",
+                DateTime.Today.AddDays(-8).ToString("MMM dd, yyyy")
+            }));
+        }
+
+        private void BtnNewRequest_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Online filing will be added in a future update. Visit your barangay office to submit now.",
+                "New Document Request",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+    }
+}
