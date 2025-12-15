@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using System.Drawing.Drawing2D;
+using System.Reflection;
+using System.IO;
 
 namespace BarangayanEMS
 {
@@ -44,13 +46,41 @@ namespace BarangayanEMS
         private Control _slideTo;
         private int _slideStep;
         private const int SlideSteps = 18;
+        private bool _isSliding; // guard to prevent overlapping animations
+
+        // Sidebar accent color used for active state
+        private static readonly Color NavAccent = Color.FromArgb(77, 109, 242);
+
+        protected override CreateParams CreateParams
+        {
+            get 
+            {
+                // Reduce flicker by enabling composited painting for child controls
+                var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
+        private static void EnableDoubleBuffer(Control control)
+        {
+            if (control == null) return;
+            try
+            {
+                // Use reflection to set the protected DoubleBuffered property on arbitrary controls
+                typeof(Control).InvokeMember("DoubleBuffered",
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty,
+                    null, control, new object[] { true });
+            }
+            catch { /* ignore */ }
+        }
 
         public DashboardForm(string userName = "Juan")
         {
             InitializeComponent();        // Designer builds base layout
             _userDisplayName = string.IsNullOrWhiteSpace(userName) ? "Resident" : userName.Trim();
             UpdateHeaderGreeting();
-
+            MakeHeaderStatic();           // ensure header is informational only
             ResolveCoreControls();        // find pnlContentHost
             BuildPages(_userDisplayName);         // create “pages” inside host
             SetupNavigation();            // hook sidebar nav
@@ -60,6 +90,40 @@ namespace BarangayanEMS
 
             ShowPage(DashboardPage.Dashboard, immediate: true);
         }
+
+        // Keep header purely informational (no hover/click/background changes)
+        private void MakeHeaderStatic()
+        {
+            // Replace any interactive header label with a fresh, non-interactive one
+            Control[] found = this.Controls.Find("lblMainTitle", true);
+            var old = (found.Length > 0) ? found[0] as Label : null;
+            if (old == null) return;
+
+            Label replacement = new Label
+            {
+                AutoSize = old.AutoSize,
+                Text = old.Text,
+                Font = old.Font,
+                ForeColor = old.ForeColor,
+                BackColor = Color.Transparent,
+                Location = old.Location,
+                Anchor = old.Anchor,
+                Cursor = Cursors.Default,
+                TabStop = false,
+                UseMnemonic = false
+            };
+
+            Control parent = old.Parent ?? this;
+            int index = (parent is null) ? -1 : parent.Controls.GetChildIndex(old, false);
+            parent.Controls.Remove(old);
+            parent.Controls.Add(replacement);
+            if (index >= 0)
+            {
+                parent.Controls.SetChildIndex(replacement, index);
+            }
+        }
+
+       
 
         // =========================================================
         //  HEADER TEXT
@@ -89,6 +153,8 @@ namespace BarangayanEMS
                 };
                 this.Controls.Add(_contentHost);
             }
+
+            EnableDoubleBuffer(_contentHost);
         }
 
         private Panel FindPanel(string name)
@@ -116,6 +182,7 @@ namespace BarangayanEMS
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(246, 247, 255)
             };
+            EnableDoubleBuffer(_pageDashboard);
 
             // Big welcome text inside the content area
             Label lblWelcome = new Label
@@ -336,6 +403,11 @@ namespace BarangayanEMS
             _pageFeedback = CreatePlaceholderPage("Feedback", Color.FromArgb(245, 158, 11));
             _pageAbout = CreatePlaceholderPage("About Barangayan EMS", Color.FromArgb(139, 92, 246));
 
+            EnableDoubleBuffer(_pageServices);
+            EnableDoubleBuffer(_pageRequirements);
+            EnableDoubleBuffer(_pageFeedback);
+            EnableDoubleBuffer(_pageAbout);
+
             _contentHost.Controls.Add(_pageDashboard);
             _contentHost.Controls.Add(_pageServices);
             _contentHost.Controls.Add(_pageRequirements);
@@ -533,14 +605,16 @@ namespace BarangayanEMS
                 Cursor = Cursors.Hand,
                 Tag = title
             };
+            EnableDoubleBuffer(card);
 
             bool hovered = false;
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 Rectangle cardRect = new Rectangle(0, 0, card.Width - 12, card.Height - 12);
-                Rectangle shadowRect = cardRect;
-                shadowRect.Offset(5, 5);
+                // Adjust shadow rect to avoid clipping artifacts on certain DPI/scales
+                Rectangle shadowRect = new Rectangle(cardRect.X + 3, cardRect.Y + 3, cardRect.Width, cardRect.Height);
 
                 using (GraphicsPath shadowPath = RoundedRect(shadowRect, 18))
                 using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(hovered ? 70 : 45, 15, 23, 42)))
@@ -567,28 +641,28 @@ namespace BarangayanEMS
                 Location = new Point(24, 22),
                 BackColor = Color.Transparent
             };
+            EnableDoubleBuffer(iconBadge);
 
             iconBadge.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 using (SolidBrush brush = new SolidBrush(accentColor))
                 {
                     e.Graphics.FillEllipse(brush, 0, 0, iconBadge.Width - 1, iconBadge.Height - 1);
                 }
+                // Draw emoji/icon centered within the circle with per-icon baseline tweak
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                using (var textBrush = new SolidBrush(Color.White))
+                using (var font = new Font("Segoe UI Emoji", 16f, FontStyle.Regular, GraphicsUnit.Point))
+                {
+                    e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                    var rect = new RectangleF(0, GetIconYOffset(icon), iconBadge.Width, iconBadge.Height);
+                    e.Graphics.DrawString(icon, font, textBrush, rect, sf);
+                }
             };
 
-            Label lblIcon = new Label
-            {
-                AutoSize = false,
-                Size = iconBadge.Size,
-                Text = icon,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI Emoji", 16f),
-                ForeColor = Color.White,
-                BackColor = Color.Transparent
-            };
-            lblIcon.Click += CardChild_ClickForward;
-            iconBadge.Controls.Add(lblIcon);
+            // Remove separate label and forward clicks via badge
             iconBadge.Click += CardChild_ClickForward;
 
             Label lblName = new Label
@@ -665,6 +739,21 @@ namespace BarangayanEMS
             return path;
         }
 
+        // Small per-icon vertical tweak so glyphs with different font baselines look visually centered
+        private static float GetIconYOffset(string icon)
+        {
+            if (string.IsNullOrWhiteSpace(icon)) return 0f;
+            switch (icon.Trim())
+            {
+                case "\u26A0": // Warning sign (Report Issues)
+                    return -2.0f;
+                case "\U0001F4B3": // Credit card (Online Payments)
+                    return -1.8f;
+                default:
+                    return -0.6f; // subtle lift for other emoji to appear visually centered
+            }
+        }
+
         // =========================================================
         //  NAVIGATION: WIRE SIDEBAR PANELS TO PAGES
         // =========================================================
@@ -686,6 +775,12 @@ namespace BarangayanEMS
             _navMap.Add(nav, page);
 
             nav.Cursor = Cursors.Hand;
+            EnableDoubleBuffer(nav);
+            nav.Padding = new Padding(12, 8, 12, 8);
+            nav.BackColor = Color.Transparent;
+            nav.Tag = false; // active flag
+            nav.Paint += (s, e) => PaintNavItem(nav, e);
+        
             nav.MouseEnter += (s, e) => Nav_MouseEnter(nav);
             nav.MouseLeave += (s, e) => Nav_MouseLeave(nav);
             nav.Click += Nav_Click;
@@ -708,23 +803,46 @@ namespace BarangayanEMS
         private void Nav_MouseEnter(Panel nav)
         {
             if (nav == _activeNavPanel) return;
-            nav.BackColor = Color.FromArgb(230, 240, 255);
+            nav.BackColor = Color.FromArgb(245, 248, 255);
+            nav.Invalidate();
         }
 
         private void Nav_MouseLeave(Panel nav)
         {
             if (nav == _activeNavPanel) return;
             nav.BackColor = Color.Transparent;
+            nav.Invalidate();
         }
 
         private void SetNavActive(Panel nav, bool active)
         {
             if (nav == null) return;
-            nav.BackColor = active ? Color.White : Color.Transparent;
+            nav.Tag = active; // store active flag for painter
+            nav.BackColor = active ? Color.Transparent : Color.Transparent; // painter draws background when active
+            ApplyNavTextColors(nav, active);
+            nav.Invalidate();
+        }
+
+        private void ApplyNavTextColors(Panel nav, bool active)
+        {
+            if (nav == null) return;
+            foreach (Control child in nav.Controls)
+            {
+                if (active)
+                {
+                    child.ForeColor = NavAccent;
+                }
+                else
+                {
+                    child.ForeColor = Color.FromArgb(90, 90, 90); // neutral gray
+                }
+            }
         }
 
         private void Nav_Click(object sender, EventArgs e)
         {
+            if (_isSliding) return; // ignore while animating
+
             Panel nav = sender as Panel;
             if (nav == null && sender is Control c)
                 nav = c.Parent as Panel;
@@ -733,10 +851,13 @@ namespace BarangayanEMS
                 return;
 
             DashboardPage target = _navMap[nav];
-            if (target == _activePage)
+            if (target == _activePage && _activeNavPanel == nav)
                 return;
 
+            // deactivate previous active
             SetNavActive(_activeNavPanel, false);
+
+            // activate clicked
             SetNavActive(nav, true);
             _activeNavPanel = nav;
 
@@ -795,6 +916,9 @@ namespace BarangayanEMS
 
             _activePage = page;
 
+            // Sync sidebar visual active state to the page we are showing
+            SyncActiveNavToPage(page);
+
             if (immediate)
             {
                 foreach (Control c in _contentHost.Controls)
@@ -802,10 +926,24 @@ namespace BarangayanEMS
 
                 newPage.Location = new Point(0, 0);
                 _slideFrom = newPage;
+                _slideTo = null;
+                _isSliding = false;
                 return;
             }
 
             StartSlideAnimation(newPage);
+        }
+
+        private void SyncActiveNavToPage(DashboardPage page)
+        {
+            // Find the nav panel mapped to the page and set active state visually
+            Panel targetPanel = _navMap.FirstOrDefault(kv => kv.Value == page).Key;
+            if (targetPanel != null && targetPanel != _activeNavPanel)
+            {
+                SetNavActive(_activeNavPanel, false);
+                SetNavActive(targetPanel, true);
+                _activeNavPanel = targetPanel;
+            }
         }
 
         private Control PageFromEnum(DashboardPage page)
@@ -826,6 +964,9 @@ namespace BarangayanEMS
             if (_slideTimer == null || _contentHost == null)
                 return;
 
+            if (_isSliding)
+                return; // do not start overlapping animations
+
             if (_slideTimer.Enabled)
                 _slideTimer.Stop();
 
@@ -838,6 +979,7 @@ namespace BarangayanEMS
             _slideFrom = current;
             _slideTo = newPage;
             _slideStep = 0;
+            _isSliding = true;
 
             _slideTo.Visible = true;
             _slideTo.BringToFront();
@@ -854,6 +996,7 @@ namespace BarangayanEMS
             if (_slideFrom == null || _slideTo == null || _contentHost == null)
             {
                 _slideTimer.Stop();
+                _isSliding = false;
                 return;
             }
 
@@ -870,10 +1013,14 @@ namespace BarangayanEMS
             {
                 _slideTimer.Stop();
                 _slideTo.Location = new Point(0, 0);
-                _slideFrom.Visible = false;
+
+                // Make only the target page visible to avoid paint artifacts
+                foreach (Control c in _contentHost.Controls)
+                    c.Visible = (c == _slideTo);
 
                 _slideFrom = _slideTo;
                 _slideTo = null;
+                _isSliding = false;
             }
         }
 
@@ -882,116 +1029,45 @@ namespace BarangayanEMS
         // =========================================================
         private void cardDocumentRequests_Click(object sender, EventArgs e)
         {
-            using (var dialog = new DocumentRequestForm())
-            {
-                dialog.ShowDialog(this);
-            }
+            MessageBox.Show(
+                "This feature is available soon.",
+                "Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void OpenSubmitBlotterForm()
         {
-            using (var form = new SubmitBlotterForm())
-            {
-                form.StartPosition = FormStartPosition.CenterParent;
-                form.ShowInTaskbar = false;
-                form.TopMost = true;
-                form.ShowDialog(this);
-            }
+            MessageBox.Show(
+                "This feature is available soon.",
+                "Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void cardBlotterReports_Click(object sender, EventArgs e)
         {
-            using (var form = new BlotterReportForm())
-            {
-                form.StartPosition = FormStartPosition.CenterParent;
-                form.ShowDialog(this);
-            }
+            MessageBox.Show(
+                "This feature is available soon.",
+                "Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void ServiceCard_Click(object sender, EventArgs e)
         {
-            if (!(sender is Control card) || !(card.Tag is string serviceName))
-            {
-                return;
-            }
-
-            NavigateService(serviceName);
+            MessageBox.Show(
+                "This feature is available soon.",
+                "Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         private void NavigateService(string serviceName)
         {
-            // Normalize for matching
-            string key = (serviceName ?? string.Empty).Trim().ToLowerInvariant();
-
-            // Route to specific forms/pages. Adjust mappings as needed.
-            if (key.Contains("report issues"))
-            {
-                // Blotter submission form
-                using (var form = new SubmitBlotterForm())
-                {
-                    form.StartPosition = FormStartPosition.CenterParent;
-                    form.ShowDialog(this);
-                }
-                return;
-            }
-
-            if (key.Contains("emergency services"))
-            {
-                // Go to Blotter reports list (as an example of emergency-related module)
-                using (var form = new BlotterReportForm())
-                {
-                    form.StartPosition = FormStartPosition.CenterParent;
-                    form.ShowDialog(this);
-                }
-                return;
-            }
-
-            if (key.Contains("barangay id"))
-            {
-                // Reuse Document Request as ID Application (same workflow)
-                using (var entry = new DocumentRequestEntryForm())
-                {
-                    entry.StartPosition = FormStartPosition.CenterParent;
-                    entry.ShowDialog(this);
-                }
-                return;
-            }
-
-            if (key.Contains("online payments"))
-            {
-                // Placeholder: open a simple info dialog or your payments module form when available
-                MessageBox.Show(
-                    "Payments module is coming soon.",
-                    "Online Payments",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                return;
-            }
-
-            if (key.Contains("online appointments") || key.Contains("scheduling"))
-            {
-                MessageBox.Show(
-                    "Appointments scheduling will be available soon.",
-                    "Appointments",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                return;
-            }
-
-            if (key.Contains("emergency hotline"))
-            {
-                MessageBox.Show(
-                    "Emergency hotline quick dial will be available soon.",
-                    "Emergency Hotline",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                return;
-            }
-
-            // Fallback: keep UX consistent
             MessageBox.Show(
-                $"{serviceName} will be available soon.",
-                "Services",
+                "This feature is available soon.",
+                "Coming Soon",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
         }
@@ -1028,6 +1104,33 @@ namespace BarangayanEMS
             {
                 this.InvokeOnClick(child.Parent, EventArgs.Empty);
             }
+        }
+
+        private void PaintNavItem(Panel nav, PaintEventArgs e)
+        {
+            if (nav == null) return;
+            bool isActive = nav.Tag as bool? == true;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            if (isActive)
+            {
+                Rectangle rect = new Rectangle(6, 4, nav.Width - 12, nav.Height - 8);
+                // shadow
+                using (GraphicsPath shadowPath = RoundedRect(new Rectangle(rect.X + 2, rect.Y + 2, rect.Width, rect.Height), 12))
+                using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(40, 17, 24, 39)))
+                {
+                    e.Graphics.FillPath(shadowBrush, shadowPath);
+                }
+                // highlight container
+                using (GraphicsPath path = RoundedRect(rect, 12))
+                using (SolidBrush fill = new SolidBrush(Color.White))
+                using (Pen border = new Pen(Color.FromArgb(230, 236, 255)))
+                {
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            }
+            // inactive: transparent background, no drawing
         }
 
         // =========================================================
@@ -1089,22 +1192,43 @@ namespace BarangayanEMS
 
             foreach (var c in candidates)
             {
-                c.Cursor = Cursors.Hand;
-                c.Click -= ServicesNav_Click;
-                c.Click += ServicesNav_Click;
-
-                // If it has a parent panel, also make the parent clickable.
-                if (c.Parent is Panel p)
-                {
-                    p.Cursor = Cursors.Hand;
-                    p.Click -= ServicesNav_Click;
-                    p.Click += ServicesNav_Click;
+                // Find a panel container to act as the nav item. Prefer the parent panel; if none, try self if panel.
+                Panel p = c.Parent as Panel ?? (c as Panel);
+                if (p == null) {
+                    // Fall back to making the control clickable but without active-state tracking
+                    c.Cursor = Cursors.Hand;
+                    c.Click -= ServicesNav_Click;
+                    c.Click += ServicesNav_Click;
+                    continue;
                 }
+
+                // Register in nav map if not already registered so active-state behaves like other items
+                if (!_navMap.ContainsKey(p))
+                {
+                    _navMap.Add(p, DashboardPage.Services);
+
+                    p.Cursor = Cursors.Hand;
+                    p.MouseEnter -= (s, e) => Nav_MouseEnter(p);
+                    p.MouseLeave -= (s, e) => Nav_MouseLeave(p);
+                    p.MouseEnter += (s, e) => Nav_MouseEnter(p);
+                    p.MouseLeave += (s, e) => Nav_MouseLeave(p);
+
+                    // Use the same click route as normal nav so active visual toggles consistently
+                    p.Click -= Nav_Click;
+                    p.Click += Nav_Click;
+                }
+
+                // Also forward clicks from the child control to the parent panel
+                c.Cursor = Cursors.Hand;
+                c.Click -= Nav_Click;
+                c.Click += Nav_Click;
             }
         }
 
         private void ServicesNav_Click(object sender, EventArgs e)
         {
+            if (_isSliding) return; // ignore while animating
+
             // Update visual active state if coming from a sidebar item
             Panel navPanel = sender as Panel ?? (sender as Control)?.Parent as Panel;
             if (navPanel != null)
@@ -1114,6 +1238,8 @@ namespace BarangayanEMS
                 _activeNavPanel = navPanel;
             }
 
+            // Ensure Services is set as the logical active page
+            _activePage = DashboardPage.Services;
             ShowPage(DashboardPage.Services, immediate: false);
         }
     }
