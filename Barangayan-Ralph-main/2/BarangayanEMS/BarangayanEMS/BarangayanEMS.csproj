@@ -103,6 +103,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Blotter\BlotterReportForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Blotter\SubmitBlotterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="CreateAccount\CreateAccount.Designer.cs" />
     <Compile Include="CreateAccount\CreateAccountForm.cs">
       <SubType>Form</SubType>

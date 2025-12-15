@@ -1,0 +1,1686 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+using System.Drawing.Drawing2D;
+
+namespace BarangayanEMS
+{
+    public partial class DashboardForm : Form
+    {
+        // ---------- PAGE ENUM ----------
+        private enum DashboardPage
+        {
+            Dashboard,
+            Services,
+            Requirements,
+            Feedback,
+            About
+        }
+
+        // ---------- NAVIGATION STATE ----------
+        private readonly Dictionary<Panel, DashboardPage> _navMap =
+            new Dictionary<Panel, DashboardPage>();
+
+        private Panel _activeNavPanel;
+        private DashboardPage _activePage = DashboardPage.Dashboard;
+
+        // Host where pages will slide in/out
+        private Panel _contentHost;
+
+        // Pages (created only here, not in Designer)
+        private Panel _pageDashboard;
+        private Panel _pageServices;
+        private Panel _pageRequirements;
+        private Panel _pageFeedback;
+        private Panel _pageAbout;
+        private readonly string _userDisplayName;
+
+        // ---------- SLIDE ANIMATION ----------
+        private Timer _slideTimer;
+        private Control _slideFrom;
+        private Control _slideTo;
+        private int _slideStep;
+        private const int SlideSteps = 18;
+
+        public DashboardForm(string userName = "Juan")
+        {
+            InitializeComponent();        // Designer builds base layout
+            _userDisplayName = string.IsNullOrWhiteSpace(userName) ? "Resident" : userName.Trim();
+            UpdateHeaderGreeting();
+
+            ResolveCoreControls();        // find pnlContentHost
+            BuildPages(_userDisplayName);         // create “pages” inside host
+            SetupNavigation();            // hook sidebar nav
+            SetupSearchBox();             // placeholder behavior
+            SetupSlideTimer();            // page slide animation
+
+            ShowPage(DashboardPage.Dashboard, immediate: true);
+        }
+
+        // =========================================================
+        //  HEADER TEXT
+        // =========================================================
+        private void UpdateHeaderGreeting()
+        {
+            if (!string.IsNullOrWhiteSpace(_userDisplayName) && lblMainTitle != null)
+            {
+                lblMainTitle.Text = $"Welcome back, {_userDisplayName}";
+            }
+        }
+
+        // =========================================================
+        //  FIND EXISTING DESIGNER CONTROLS BY NAME
+        // =========================================================
+        private void ResolveCoreControls()
+        {
+            _contentHost = FindPanel("pnlContentHost");
+
+            // basic fallback (should not happen if Designer is correct)
+            if (_contentHost == null)
+            {
+                _contentHost = new Panel
+                {
+                    Dock = DockStyle.Fill,
+                    BackColor = Color.White
+                };
+                this.Controls.Add(_contentHost);
+            }
+        }
+
+        private Panel FindPanel(string name)
+        {
+            Control[] found = this.Controls.Find(name, true);
+            return (found.Length > 0) ? found[0] as Panel : null;
+        }
+
+        private TextBox FindTextBox(string name)
+        {
+            Control[] found = this.Controls.Find(name, true);
+            return (found.Length > 0) ? found[0] as TextBox : null;
+        }
+
+        // =========================================================
+        //  BUILD DASHBOARD PAGES (ONLY IN THIS FILE)
+        // =========================================================
+        private void BuildPages(string userName)
+        {
+            _contentHost.Controls.Clear();
+
+            // ----- DASHBOARD PAGE -----
+            _pageDashboard = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255)
+            };
+
+            // Big welcome text inside the content area
+            Label lblWelcome = new Label
+            {
+                AutoSize = true,
+                Text = $"Welcome back, {userName}",
+                Font = new Font("Segoe UI Semibold", 22f),
+                ForeColor = Color.FromArgb(32, 32, 32),
+                Location = new Point(24, 24)
+            };
+
+            Label lblSub = new Label
+            {
+                AutoSize = true,
+                Text = "Sign in to access your barangay services",
+                Font = new Font("Segoe UI", 10.5f),
+                ForeColor = Color.DimGray,
+                Location = new Point(26, 60)
+            };
+
+            _pageDashboard.Controls.Add(lblWelcome);
+            _pageDashboard.Controls.Add(lblSub);
+
+            // ===== METRIC CARDS (TOP ROW) =====
+            // positions tuned to resemble the reference UI
+            _pageDashboard.Controls.Add(CreateMetricCard(
+                "👥 Total Population",
+                "204,500",
+                Color.FromArgb(77, 109, 242),
+                new Point(32, 110)
+            ));
+
+            _pageDashboard.Controls.Add(CreateMetricCard(
+                "📣 Announcements",
+                "5",
+                Color.FromArgb(0, 168, 214),
+                new Point(330, 110)
+            ));
+
+            _pageDashboard.Controls.Add(CreateMetricCard(
+                "🕒 Pending Requests",
+                "0",
+                Color.FromArgb(130, 84, 245),
+                new Point(628, 110)
+            ));
+
+            // ===== LARGE CARDS (SECOND ROW) =====
+            // DOCUMENT REQUESTS
+            Panel cardDoc = new Panel
+            {
+                Size = new Size(268, 190),
+                Location = new Point(32, 260),
+                BackColor = Color.FromArgb(63, 153, 89),
+                Cursor = Cursors.Hand
+            };
+            cardDoc.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, cardDoc.Width - 1, cardDoc.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 22))
+                using (SolidBrush brush = new SolidBrush(cardDoc.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+            };
+            cardDoc.Click += cardDocumentRequests_Click;
+
+            Label docTitle = new Label
+            {
+                AutoSize = true,
+                Text = "📄 Document Requests",
+                Font = new Font("Segoe UI Semibold", 13f),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Location = new Point(22, 18)
+            };
+            docTitle.Click += CardChild_ClickForward;
+
+            Label docValue = new Label
+            {
+                AutoSize = true,
+                Text = "0",
+                Font = new Font("Segoe UI Semibold", 32f),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Location = new Point(26, 60)
+            };
+            docValue.Click += CardChild_ClickForward;
+
+            Label docSub = new Label
+            {
+                AutoSize = true,
+                Text = "Total processed",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.WhiteSmoke,
+                BackColor = Color.Transparent,
+                Location = new Point(26, 140)
+            };
+            docSub.Click += CardChild_ClickForward;
+
+            cardDoc.Controls.Add(docTitle);
+            cardDoc.Controls.Add(docValue);
+            cardDoc.Controls.Add(docSub);
+            _pageDashboard.Controls.Add(cardDoc);
+
+            // BLOTTER REPORTS
+            Panel cardBlotter = new Panel
+            {
+                Size = new Size(268, 190),
+                Location = new Point(320, 260),
+                BackColor = Color.FromArgb(160, 105, 60),
+                Cursor = Cursors.Hand
+            };
+            cardBlotter.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, cardBlotter.Width - 1, cardBlotter.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 22))
+                using (SolidBrush brush = new SolidBrush(cardBlotter.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+            };
+            cardBlotter.Click += cardBlotterReports_Click;
+
+            Label blotterTitle = new Label
+            {
+                AutoSize = true,
+                Text = "🛡 Blotter Reports",
+                Font = new Font("Segoe UI Semibold", 13f),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Location = new Point(22, 18)
+            };
+            blotterTitle.Click += CardChild_ClickForward;
+
+            Label blotterCount = new Label
+            {
+                AutoSize = true,
+                Text = "0",                        // your value here
+                Font = new Font("Segoe UI Semibold", 32f),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                Location = new Point(26, 60)       // adjust as needed for center
+            };
+
+            blotterCount.Click += CardChild_ClickForward;
+            cardBlotter.Controls.Add(blotterCount);
+
+            Label blotterValue = new Label
+            {
+                AutoSize = true,
+                Text = "1 pending",
+                Font = new Font("Segoe UI", 10f),
+                ForeColor = Color.WhiteSmoke,
+                BackColor = Color.Transparent,
+                Location = new Point(26, 140)
+            };
+            blotterValue.Click += CardChild_ClickForward;
+
+            cardBlotter.Controls.Add(blotterTitle);
+            cardBlotter.Controls.Add(blotterValue);
+            _pageDashboard.Controls.Add(cardBlotter);
+
+            // ===== LATEST UPDATES SECTION (RIGHT SIDE) =====
+            int updatesX = 620;
+            int updatesY = 230;
+
+            Label lblUpdates = new Label
+            {
+                AutoSize = true,
+                Text = "Latest Updates",
+                Font = new Font("Segoe UI Semibold", 12f),
+                ForeColor = Color.FromArgb(32, 32, 32),
+                Location = new Point(updatesX, updatesY)
+            };
+            _pageDashboard.Controls.Add(lblUpdates);
+
+            _pageDashboard.Controls.Add(CreateUpdateCard(
+                "Community event scheduled",
+                "A clean up drive is scheduled this Saturday at the main park area.",
+                "2 days ago",
+                new Point(updatesX, updatesY + 28)));
+
+            _pageDashboard.Controls.Add(CreateUpdateCard(
+                "Road maintenance on Main St.",
+                "Expect temporary closures and detours on Main Street next week.",
+                "5 days ago",
+                new Point(updatesX, updatesY + 98)));
+
+            _pageDashboard.Controls.Add(CreateUpdateCard(
+                "Vaccination drive this week",
+                "A vaccination drive will be held in the barangay hall for eligible residents.",
+                "1 week ago",
+                new Point(updatesX, updatesY + 168)));
+
+            // ----- OTHER PAGES (PLACEHOLDERS) -----
+            _pageServices = CreateServicesPage();
+            _pageRequirements = CreatePlaceholderPage("Requirements", Color.FromArgb(16, 185, 129));
+            _pageFeedback = CreatePlaceholderPage("Feedback", Color.FromArgb(245, 158, 11));
+            _pageAbout = CreatePlaceholderPage("About Barangayan EMS", Color.FromArgb(139, 92, 246));
+
+            _contentHost.Controls.Add(_pageDashboard);
+            _contentHost.Controls.Add(_pageServices);
+            _contentHost.Controls.Add(_pageRequirements);
+            _contentHost.Controls.Add(_pageFeedback);
+            _contentHost.Controls.Add(_pageAbout);
+        }
+
+        // =========================================================
+        //  CARD CREATION HELPERS
+        // =========================================================
+        private Panel CreateMetricCard(string title, string value, Color color, Point location)
+        {
+            Panel card = new Panel
+            {
+                Size = new Size(260, 120),
+                Location = location,
+                BackColor = Color.Transparent
+            };
+
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 18))
+                using (LinearGradientBrush brush = new LinearGradientBrush(
+                           rect,
+                           color,
+                           ControlPaint.Light(color, 0.1f),
+                           0f))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+            };
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = title,
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.White,
+                Location = new Point(18, 16),
+                BackColor = Color.Transparent
+            };
+
+            Label lblValue = new Label
+            {
+                AutoSize = true,
+                Text = value,
+                Font = new Font("Segoe UI Semibold", 22f),
+                ForeColor = Color.White,
+                Location = new Point(18, 46),
+                BackColor = Color.Transparent
+            };
+
+            card.Controls.Add(lblTitle);
+            card.Controls.Add(lblValue);
+            return card;
+        }
+
+        private Panel CreateUpdateCard(string title, string body, string age, Point location)
+        {
+            Panel card = new Panel
+            {
+                Size = new Size(330, 64),
+                Location = location,
+                BackColor = Color.White
+            };
+
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 14))
+                using (SolidBrush brush = new SolidBrush(Color.White))
+                using (Pen pen = new Pen(Color.FromArgb(228, 231, 255)))
+                {
+                    e.Graphics.FillPath(brush, path);
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = title,
+                Font = new Font("Segoe UI Semibold", 10.5f),
+                ForeColor = Color.FromArgb(32, 32, 32),
+                Location = new Point(18, 8),
+                BackColor = Color.Transparent
+            };
+
+            Label lblBody = new Label
+            {
+                AutoSize = false,
+                Text = body,
+                Font = new Font("Segoe UI", 8.9f),
+                ForeColor = Color.DimGray,
+                Location = new Point(18, 26),
+                Size = new Size(230, 32),
+                BackColor = Color.Transparent
+            };
+
+            Label lblAge = new Label
+            {
+                AutoSize = true,
+                Text = age,
+                Font = new Font("Segoe UI", 8.5f),
+                ForeColor = Color.Gray,
+                BackColor = Color.Transparent,
+                Location = new Point(card.Width - 80, 8),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+
+            card.Controls.Add(lblTitle);
+            card.Controls.Add(lblBody);
+            card.Controls.Add(lblAge);
+            return card;
+        }
+
+        private Panel CreateServicesPage()
+        {
+            Panel page = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255),
+                Visible = false
+            };
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = "Services",
+                Font = new Font("Segoe UI Semibold", 24f),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(28, 26)
+            };
+
+            Label lblSubtitle = new Label
+            {
+                AutoSize = true,
+                Text = "Access barangay services in one place.",
+                Font = new Font("Segoe UI", 10.5f),
+                ForeColor = Color.DimGray,
+                Location = new Point(30, 66)
+            };
+
+            FlowLayoutPanel grid = new FlowLayoutPanel
+            {
+                Location = new Point(32, 110),
+                Size = new Size(page.Width - 64, page.Height - 140),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                BackColor = Color.Transparent,
+                AutoScroll = true,
+                WrapContents = true,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+
+            var serviceCards = new (string Title, string Description, Color Accent, string Icon)[]
+            {
+                ("Online Payments", "Pay barangay dues securely online.", Color.FromArgb(99, 123, 255), "\U0001F4B3"),
+                ("Business Permit Services", "Apply for or renew permits digitally.", Color.FromArgb(252, 156, 199), "\U0001F9FE"),
+                ("Emergency Services", "Quick access to emergency contacts.", Color.FromArgb(255, 115, 116), "\U0001F691"),
+                ("Report Issues", "Submit concerns and incidents anytime.", Color.FromArgb(255, 174, 124), "\u26A0"),
+                ("Barangay ID Application", "Request or renew your barangay ID.", Color.FromArgb(139, 199, 120), "\U0001F194"),
+                ("Emergency Hotline", "Reach barangay hotline instantly.", Color.FromArgb(255, 153, 141), "\U0001F4DE"),
+                ("Online Appointments / Scheduling", "Book appointments without visiting the hall.", Color.FromArgb(101, 119, 255), "\U0001F4C5")
+            };
+
+            foreach (var info in serviceCards)
+            {
+                grid.Controls.Add(CreateServiceCard(info.Title, info.Description, info.Accent, info.Icon));
+            }
+
+            page.Controls.Add(lblTitle);
+            page.Controls.Add(lblSubtitle);
+            page.Controls.Add(grid);
+
+            page.Resize += (s, e) =>
+            {
+                grid.Size = new Size(Math.Max(220, page.Width - 64), Math.Max(220, page.Height - 140));
+            };
+
+            return page;
+        }
+
+        private Panel CreateServiceCard(string title, string description, Color accentColor, string icon)
+        {
+            Panel card = new Panel
+            {
+                Size = new Size(232, 130),
+                Margin = new Padding(0, 0, 28, 28),
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand,
+                Tag = title
+            };
+
+            bool hovered = false;
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle cardRect = new Rectangle(0, 0, card.Width - 12, card.Height - 12);
+                Rectangle shadowRect = cardRect;
+                shadowRect.Offset(5, 5);
+
+                using (GraphicsPath shadowPath = RoundedRect(shadowRect, 18))
+                using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(hovered ? 70 : 45, 15, 23, 42)))
+                {
+                    e.Graphics.FillPath(shadowBrush, shadowPath);
+                }
+
+                using (GraphicsPath cardPath = RoundedRect(cardRect, 18))
+                using (SolidBrush fillBrush = new SolidBrush(Color.White))
+                using (Pen borderPen = new Pen(Color.FromArgb(hovered ? 210 : 235, 235, 245)))
+                {
+                    e.Graphics.FillPath(fillBrush, cardPath);
+                    e.Graphics.DrawPath(borderPen, cardPath);
+                }
+            };
+
+            card.MouseEnter += (s, e) => { hovered = true; card.Invalidate(); };
+            card.MouseLeave += (s, e) => { hovered = false; card.Invalidate(); };
+            card.Click += ServiceCard_Click;
+
+            Panel iconBadge = new Panel
+            {
+                Size = new Size(46, 46),
+                Location = new Point(24, 22),
+                BackColor = Color.Transparent
+            };
+
+            iconBadge.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (SolidBrush brush = new SolidBrush(accentColor))
+                {
+                    e.Graphics.FillEllipse(brush, 0, 0, iconBadge.Width - 1, iconBadge.Height - 1);
+                }
+            };
+
+            Label lblIcon = new Label
+            {
+                AutoSize = false,
+                Size = iconBadge.Size,
+                Text = icon,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI Emoji", 16f),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent
+            };
+            lblIcon.Click += CardChild_ClickForward;
+            iconBadge.Controls.Add(lblIcon);
+            iconBadge.Click += CardChild_ClickForward;
+
+            Label lblName = new Label
+            {
+                AutoSize = false,
+                Text = title,
+                Font = new Font("Segoe UI Semibold", 11f),
+                ForeColor = Color.FromArgb(35, 35, 35),
+                Location = new Point(24, 76),
+                Size = new Size(card.Width - 48, 22),
+                BackColor = Color.Transparent
+            };
+            lblName.Click += CardChild_ClickForward;
+
+            Label lblDesc = new Label
+            {
+                AutoSize = false,
+                Text = description,
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.DimGray,
+                Location = new Point(24, 100),
+                Size = new Size(card.Width - 48, 24),
+                BackColor = Color.Transparent
+            };
+            lblDesc.Click += CardChild_ClickForward;
+
+            card.Controls.Add(iconBadge);
+            card.Controls.Add(lblName);
+            card.Controls.Add(lblDesc);
+            return card;
+        }
+
+        private Panel CreatePlaceholderPage(string title, Color accent)
+        {
+            Panel page = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255),
+                Visible = false
+            };
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = title,
+                Font = new Font("Segoe UI Semibold", 20f),
+                ForeColor = accent,
+                Location = new Point(24, 24)
+            };
+
+            Label lblBody = new Label
+            {
+                AutoSize = true,
+                Text = "Page content coming soon. This is a placeholder section.",
+                Font = new Font("Segoe UI", 10f),
+                ForeColor = Color.DimGray,
+                Location = new Point(26, 60)
+            };
+
+            page.Controls.Add(lblTitle);
+            page.Controls.Add(lblBody);
+            return page;
+        }
+
+        private GraphicsPath RoundedRect(Rectangle rect, int radius)
+        {
+            int diameter = radius * 2;
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        // =========================================================
+        //  NAVIGATION: WIRE SIDEBAR PANELS TO PAGES
+        // =========================================================
+        private void SetupNavigation()
+        {
+            RegisterNavPanel("navDashboard", DashboardPage.Dashboard);
+            RegisterNavPanel("navServices", DashboardPage.Services);
+            RegisterNavPanel("navRequirements", DashboardPage.Requirements);
+            RegisterNavPanel("navFeedback", DashboardPage.Feedback);
+            RegisterNavPanel("navAbout", DashboardPage.About);
+        }
+
+        private void RegisterNavPanel(string panelName, DashboardPage page)
+        {
+            Panel nav = FindPanel(panelName);
+            if (nav == null) return;
+
+            if (_navMap.ContainsKey(nav)) return;
+            _navMap.Add(nav, page);
+
+            nav.Cursor = Cursors.Hand;
+            nav.MouseEnter += (s, e) => Nav_MouseEnter(nav);
+            nav.MouseLeave += (s, e) => Nav_MouseLeave(nav);
+            nav.Click += Nav_Click;
+
+            foreach (Control child in nav.Controls)
+            {
+                child.Cursor = Cursors.Hand;
+                child.MouseEnter += (s, e) => Nav_MouseEnter(nav);
+                child.MouseLeave += (s, e) => Nav_MouseLeave(nav);
+                child.Click += Nav_Click;
+            }
+
+            if (_activeNavPanel == null && page == DashboardPage.Dashboard)
+            {
+                SetNavActive(nav, true);
+                _activeNavPanel = nav;
+            }
+        }
+
+        private void Nav_MouseEnter(Panel nav)
+        {
+            if (nav == _activeNavPanel) return;
+            nav.BackColor = Color.FromArgb(230, 240, 255);
+        }
+
+        private void Nav_MouseLeave(Panel nav)
+        {
+            if (nav == _activeNavPanel) return;
+            nav.BackColor = Color.Transparent;
+        }
+
+        private void SetNavActive(Panel nav, bool active)
+        {
+            if (nav == null) return;
+            nav.BackColor = active ? Color.White : Color.Transparent;
+        }
+
+        private void Nav_Click(object sender, EventArgs e)
+        {
+            Panel nav = sender as Panel;
+            if (nav == null && sender is Control c)
+                nav = c.Parent as Panel;
+
+            if (nav == null || !_navMap.ContainsKey(nav))
+                return;
+
+            DashboardPage target = _navMap[nav];
+            if (target == _activePage)
+                return;
+
+            SetNavActive(_activeNavPanel, false);
+            SetNavActive(nav, true);
+            _activeNavPanel = nav;
+
+            ShowPage(target, immediate: false);
+        }
+
+        // =========================================================
+        //  SEARCH BOX PLACEHOLDER
+        // =========================================================
+        private void SetupSearchBox()
+        {
+            TextBox txtSearch = FindTextBox("txtSearch");
+            if (txtSearch == null) return;
+
+            const string placeholder = "Search";
+            txtSearch.ForeColor = Color.Gray;
+
+            txtSearch.GotFocus += (s, e) =>
+            {
+                if (txtSearch.Text == placeholder)
+                {
+                    txtSearch.Text = "";
+                    txtSearch.ForeColor = Color.FromArgb(32, 32, 32);
+                }
+            };
+
+            txtSearch.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(txtSearch.Text))
+                {
+                    txtSearch.Text = placeholder;
+                    txtSearch.ForeColor = Color.Gray;
+                }
+            };
+
+            if (string.IsNullOrWhiteSpace(txtSearch.Text))
+            {
+                txtSearch.Text = placeholder;
+                txtSearch.ForeColor = Color.Gray;
+            }
+        }
+
+        // =========================================================
+        //  SLIDE ANIMATION BETWEEN PAGES
+        // =========================================================
+        private void SetupSlideTimer()
+        {
+            _slideTimer = new Timer { Interval = 16 };
+            _slideTimer.Tick += SlideTimer_Tick;
+        }
+
+        private void ShowPage(DashboardPage page, bool immediate)
+        {
+            Control newPage = PageFromEnum(page);
+            if (newPage == null || _contentHost == null) return;
+
+            _activePage = page;
+
+            if (immediate)
+            {
+                foreach (Control c in _contentHost.Controls)
+                    c.Visible = (c == newPage);
+
+                newPage.Location = new Point(0, 0);
+                _slideFrom = newPage;
+                return;
+            }
+
+            StartSlideAnimation(newPage);
+        }
+
+        private Control PageFromEnum(DashboardPage page)
+        {
+            switch (page)
+            {
+                case DashboardPage.Dashboard: return _pageDashboard;
+                case DashboardPage.Services: return _pageServices;
+                case DashboardPage.Requirements: return _pageRequirements;
+                case DashboardPage.Feedback: return _pageFeedback;
+                case DashboardPage.About: return _pageAbout;
+                default: return _pageDashboard;
+            }
+        }
+
+        private void StartSlideAnimation(Control newPage)
+        {
+            if (_slideTimer == null || _contentHost == null)
+                return;
+
+            if (_slideTimer.Enabled)
+                _slideTimer.Stop();
+
+            Control current = null;
+            foreach (Control c in _contentHost.Controls)
+            {
+                if (c.Visible) { current = c; break; }
+            }
+
+            _slideFrom = current;
+            _slideTo = newPage;
+            _slideStep = 0;
+
+            _slideTo.Visible = true;
+            _slideTo.BringToFront();
+            _slideTo.Location = new Point(_contentHost.Width, 0);
+
+            if (_slideFrom != null)
+                _slideFrom.BringToFront();
+
+            _slideTimer.Start();
+        }
+
+        private void SlideTimer_Tick(object sender, EventArgs e)
+        {
+            if (_slideFrom == null || _slideTo == null || _contentHost == null)
+            {
+                _slideTimer.Stop();
+                return;
+            }
+
+            _slideStep++;
+            float t = _slideStep / (float)SlideSteps;
+            if (t > 1f) t = 1f;
+
+            int offset = (int)(_contentHost.Width * (1f - t));
+
+            _slideTo.Location = new Point(offset, 0);
+            _slideFrom.Location = new Point(offset - _contentHost.Width, 0);
+
+            if (_slideStep >= SlideSteps)
+            {
+                _slideTimer.Stop();
+                _slideTo.Location = new Point(0, 0);
+                _slideFrom.Visible = false;
+
+                _slideFrom = _slideTo;
+                _slideTo = null;
+            }
+        }
+
+        // =========================================================
+        //  CARD CLICK HANDLERS
+        // =========================================================
+        private void cardDocumentRequests_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new DocumentRequestForm())
+            {
+                dialog.ShowDialog(this);
+            }
+        }
+
+        private void cardBlotterReports_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Blotter reports management will be available in a future version.",
+                "Coming Soon",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void ServiceCard_Click(object sender, EventArgs e)
+        {
+            if (!(sender is Control card) || !(card.Tag is string serviceName))
+            {
+                return;
+            }
+
+            MessageBox.Show(
+                $"{serviceName} will be available soon.",
+                "Services",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void btnLogout_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                "Do you want to log out?",
+                "Log out",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            var loginForm = Application.OpenForms.OfType<LoginForm>().FirstOrDefault();
+            if (loginForm == null)
+            {
+                loginForm = new LoginForm();
+            }
+
+            loginForm.Show();
+            loginForm.BringToFront();
+            loginForm.Focus();
+
+            Close();
+        }
+
+        private void CardChild_ClickForward(object sender, EventArgs e)
+        {
+            if (sender is Control child && child.Parent != null)
+            {
+                this.InvokeOnClick(child.Parent, EventArgs.Empty);
+            }
+        }
+
+        // =========================================================
+        //  DESIGNER-EVENT STUBS (required by Designer)
+        // =========================================================
+        private void lblSystem_Click(object sender, EventArgs e)
+        {
+            // optional: show "About system"
+        }
+
+        private void lblRepublic_Click(object sender, EventArgs e)
+        {
+            // optional: link to website
+        }
+
+        private void navServices_Paint(object sender, PaintEventArgs e)
+        {
+            // no custom painting; keep empty to satisfy Designer
+        }
+
+        private void cardPending_Paint(object sender, PaintEventArgs e)
+        {
+            // legacy stub; not used with runtime metric cards
+        }
+
+        private void lblDocValue_Click(object sender, EventArgs e)
+        {
+            // legacy stub
+        }
+
+        private void cardBlotterReports_Paint(object sender, PaintEventArgs e)
+        {
+            // legacy stub
+        }
+    }
+
+    internal sealed class DocumentRequestForm : Form
+    {
+        private readonly List<DocumentRequest> _allRequests = new List<DocumentRequest>();
+        private readonly BindingSource _bindingSource = new BindingSource();
+        private readonly DataGridView _grid;
+        private readonly TextBox _txtSearch;
+        private readonly Panel _statusPanel;
+        private readonly ComboBox _cmbStatus;
+        private DocumentRequest _selectedRequest;
+
+        private static readonly string[] StatusOptions =
+        {
+            "Pending",
+            "Approved",
+            "Rejected",
+            "For Pickup",
+            "Completed"
+        };
+
+        internal DocumentRequestForm()
+        {
+            Text = "Document Request Status";
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterParent;
+            BackColor = Color.White;
+            Size = new Size(900, 560);
+            Font = new Font("Segoe UI", 9f);
+            DoubleBuffered = true;
+
+            Panel content = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Padding = new Padding(40, 30, 40, 30)
+            };
+            Controls.Add(content);
+
+            Label lblGov = new Label
+            {
+                AutoSize = true,
+                Text = "Republika ng Pilipinas\nBarangayan E-Management System",
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(90, 90, 90),
+                Location = new Point(0, 0)
+            };
+            content.Controls.Add(lblGov);
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = "Document Request Status",
+                Font = new Font("Segoe UI Semibold", 20f),
+                ForeColor = Color.FromArgb(48, 48, 48),
+                Location = new Point(0, 60)
+            };
+            content.Controls.Add(lblTitle);
+
+            _txtSearch = new TextBox
+            {
+                Width = 220,
+                Height = 30,
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.Gray,
+                Text = "Search",
+                Location = new Point(content.Width - 260, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            _txtSearch.GotFocus += (s, e) =>
+            {
+                if (_txtSearch.Text == "Search")
+                {
+                    _txtSearch.Text = string.Empty;
+                    _txtSearch.ForeColor = Color.Black;
+                }
+            };
+            _txtSearch.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(_txtSearch.Text))
+                {
+                    _txtSearch.Text = "Search";
+                    _txtSearch.ForeColor = Color.Gray;
+                }
+            };
+            _txtSearch.TextChanged += (s, e) =>
+            {
+                if (_txtSearch.Focused || _txtSearch.Text != "Search")
+                {
+                    ApplyFilter(_txtSearch.Text);
+                }
+            };
+            content.Controls.Add(_txtSearch);
+
+            FlowLayoutPanel actionBar = new FlowLayoutPanel
+            {
+                Location = new Point(0, 110),
+                AutoSize = true,
+                FlowDirection = FlowDirection.LeftToRight
+            };
+            content.Controls.Add(actionBar);
+
+            Button btnNew = CreateActionButton("+ New Request", Color.FromArgb(56, 178, 89));
+            btnNew.Click += (s, e) =>
+            {
+                using (var entry = new DocumentRequestEntryForm())
+                {
+                    entry.ShowDialog(this);
+                }
+            };
+            actionBar.Controls.Add(btnNew);
+
+            Button btnEdit = CreateActionButton("Edit Status", Color.FromArgb(44, 124, 228));
+            btnEdit.Click += (s, e) => ToggleStatusPanel();
+            actionBar.Controls.Add(btnEdit);
+
+            Button btnView = CreateActionButton("View Details", Color.FromArgb(245, 158, 11));
+            btnView.Click += (s, e) =>
+            {
+                if (_selectedRequest == null)
+                {
+                    ShowSelectPrompt();
+                    return;
+                }
+
+                MessageBox.Show(
+                    $"Request ID: {_selectedRequest.RequestId}\nType: {_selectedRequest.Type}\n" +
+                    $"Requester: {_selectedRequest.RequesterName}\nDate Filed: {_selectedRequest.DateFiled:yyyy-MM-dd}\nStatus: {_selectedRequest.Status}\nTimeline: {_selectedRequest.Actions}",
+                    "Request Details",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            };
+            actionBar.Controls.Add(btnView);
+
+            Button btnDelete = CreateActionButton("Delete", Color.FromArgb(224, 64, 64));
+            btnDelete.Click += (s, e) => DeleteSelected();
+            actionBar.Controls.Add(btnDelete);
+
+            _grid = new DataGridView
+            {
+                AutoGenerateColumns = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                Location = new Point(0, 160),
+                Size = new Size(content.Width - 80, 280),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
+                MultiSelect = false
+            };
+            _grid.DefaultCellStyle.Font = new Font("Segoe UI", 10f);
+            _grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI Semibold", 10f);
+            _grid.EnableHeadersVisualStyles = false;
+            _grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(240, 242, 250);
+            _grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(70, 70, 70);
+            _grid.RowTemplate.Height = 36;
+
+            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(DocumentRequest.RequestId),
+                HeaderText = "Request ID",
+                Width = 90
+            });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(DocumentRequest.Type),
+                HeaderText = "Type",
+                Width = 190
+            });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(DocumentRequest.RequesterName),
+                HeaderText = "Requester Name",
+                Width = 180
+            });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(DocumentRequest.DateFiled),
+                HeaderText = "Date Filed",
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "yyyy-MM-dd" },
+                Width = 120
+            });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(DocumentRequest.Status),
+                HeaderText = "Status",
+                Width = 120
+            });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                DataPropertyName = nameof(DocumentRequest.Actions),
+                HeaderText = "Actions",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+            });
+
+            _grid.SelectionChanged += (s, e) => UpdateSelection();
+            _grid.CellDoubleClick += (s, e) => ToggleStatusPanel();
+            content.Controls.Add(_grid);
+
+            _statusPanel = new Panel
+            {
+                Size = new Size(230, 140),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle,
+                Visible = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+
+            Label lblStatusTitle = new Label
+            {
+                AutoSize = true,
+                Text = "Update Request Status",
+                Font = new Font("Segoe UI Semibold", 10f),
+                Location = new Point(12, 12)
+            };
+            _statusPanel.Controls.Add(lblStatusTitle);
+
+            _cmbStatus = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(15, 50),
+                Width = 190
+            };
+            _cmbStatus.Items.AddRange(StatusOptions);
+            _statusPanel.Controls.Add(_cmbStatus);
+
+            Button btnSave = new Button
+            {
+                Text = "Save Changes",
+                Size = new Size(210, 36),
+                BackColor = Color.FromArgb(34, 197, 94),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(12, 100)
+            };
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.Click += (s, e) => SaveChanges();
+            _statusPanel.Controls.Add(btnSave);
+
+            content.Controls.Add(_statusPanel);
+
+            LoadRequests();
+        }
+
+        private Button CreateActionButton(string text, Color bgColor)
+        {
+            return new Button
+            {
+                Text = text,
+                AutoSize = true,
+                Height = 36,
+                BackColor = bgColor,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Margin = new Padding(0, 0, 12, 0)
+            };
+        }
+
+        private void LoadRequests()
+        {
+            Random rng = new Random();
+            _allRequests.Clear();
+            for (int i = 1; i <= 100; i++)
+            {
+                _allRequests.Add(new DocumentRequest(
+                    $"REQ-{i:D4}",
+                    "Barangay Clearance",
+                    $"Resident {rng.Next(1, 101)}",
+                    DateTime.Today.AddDays(-rng.Next(0, 30)),
+                    (i % 5 == 0) ? "For Pickup" : "Pending",
+                    "View Details, Edit Status"
+                ));
+            }
+
+            _bindingSource.DataSource = _allRequests;
+            _grid.DataSource = _bindingSource;
+
+            UpdateSelection();
+        }
+
+        private void ApplyFilter(string query)
+        {
+            _bindingSource.Filter = string.IsNullOrWhiteSpace(query) ? null :
+                $"RequesterName LIKE '%{query}%' OR RequestId LIKE '%{query}%'";
+        }
+
+        private void ToggleStatusPanel()
+        {
+            _statusPanel.Visible = !_statusPanel.Visible;
+            if (_statusPanel.Visible)
+            {
+                _cmbStatus.Focus();
+            }
+        }
+
+        private void UpdateSelection()
+        {
+            if (_grid.SelectedRows.Count == 0)
+            {
+                _selectedRequest = null;
+                _cmbStatus.SelectedIndex = -1;
+                return;
+            }
+
+            _selectedRequest = _grid.SelectedRows[0].DataBoundItem as DocumentRequest;
+            if (_selectedRequest == null)
+            {
+                _cmbStatus.SelectedIndex = -1;
+                return;
+            }
+
+            int statusIndex = Array.IndexOf(StatusOptions, _selectedRequest.Status);
+            _cmbStatus.SelectedIndex = (statusIndex >= 0) ? statusIndex : -1;
+        }
+
+        private void SaveChanges()
+        {
+            if (_selectedRequest == null) return;
+
+            string newStatus = _cmbStatus.SelectedItem as string;
+            if (newStatus == null || newStatus == _selectedRequest.Status)
+            {
+                ToggleStatusPanel();
+                return;
+            }
+
+            DialogResult result = MessageBox.Show(
+                $"Confirm change status to '{newStatus}' for request {_selectedRequest.RequestId}?",
+                "Confirm Status Change",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result == DialogResult.Yes)
+            {
+                _selectedRequest.Status = newStatus;
+                _bindingSource.ResetBindings(false);
+                ToggleStatusPanel();
+            }
+        }
+
+        private void DeleteSelected()
+        {
+            if (_selectedRequest == null)
+            {
+                ShowSelectPrompt();
+                return;
+            }
+
+            DialogResult result = MessageBox.Show(
+                $"Are you sure you want to delete request {_selectedRequest.RequestId}?",
+                "Delete Request",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                _allRequests.Remove(_selectedRequest);
+                ApplyFilter(_txtSearch.Text);
+            }
+        }
+
+        private void ShowSelectPrompt()
+        {
+            MessageBox.Show(
+                "Select a request first.",
+                "Document Requests",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private sealed class DocumentRequest
+        {
+            internal DocumentRequest(string id, string type, string requester, DateTime dateFiled, string status, string actions)
+            {
+                RequestId = id;
+                Type = type;
+                RequesterName = requester;
+                DateFiled = dateFiled;
+                Status = status;
+                Actions = actions;
+            }
+
+            public string RequestId { get; set; }
+            public string Type { get; set; }
+            public string RequesterName { get; set; }
+            public DateTime DateFiled { get; set; }
+            public string Status { get; set; }
+            public string Actions { get; set; }
+        }
+    }
+
+    internal sealed class DocumentRequestEntryForm : Form
+    {
+        private const int CardWidth = 420;
+        private readonly ComboBox _cmbDocumentType;
+        private readonly TextBox _txtApplicantName;
+        private readonly TextBox _txtContactNumber;
+        private readonly TextBox _txtPurpose;
+        private readonly DateTimePicker _dtpPickupDate;
+        private readonly NumericUpDown _numCopies;
+        private readonly TextBox _txtAdditionalRequirements;
+        private readonly Button _btnSubmit;
+        private readonly Button _btnSaveDraft;
+
+        internal DocumentRequestEntryForm()
+        {
+            Text = "Document Request";
+            Font = new Font("Segoe UI", 9f);
+            Size = new Size(480, 650);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterParent;
+            BackColor = Color.FromArgb(236, 239, 244);
+            Padding = new Padding(16);
+
+            Panel card = new Panel
+            {
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(28, 24, 28, 24)
+            };
+            Controls.Add(card);
+
+            int y = 0;
+            card.Controls.Add(CreateHeading("Document Request", new Font("Segoe UI Semibold", 16f), ref y));
+            card.Controls.Add(CreateHeading("Request official barangay documents and track their processing status.", new Font("Segoe UI", 9f), ref y, Color.DimGray, 12));
+
+            card.Controls.Add(CreateFieldLabel("Document Type *", ref y));
+            _cmbDocumentType = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = CardWidth,
+                Location = new Point(0, y)
+            };
+            _cmbDocumentType.Items.AddRange(new object[]
+            {
+                "Barangay Clearance",
+                "Barangay Certificate",
+                "Business Permit",
+                "Residency Certificate",
+                "Permit to Construct"
+            });
+            card.Controls.Add(_cmbDocumentType);
+            y = _cmbDocumentType.Bottom + 18;
+
+            int columnSpacing = 16;
+            int leftWidth = 220;
+            int rightWidth = CardWidth - leftWidth - columnSpacing;
+
+            card.Controls.Add(CreateFieldLabel("Applicant Name *", ref y));
+            _txtApplicantName = new TextBox { Width = leftWidth, Location = new Point(0, y) };
+            ApplyPlaceholder(_txtApplicantName, "Enter full name");
+            card.Controls.Add(_txtApplicantName);
+
+            Label lblContact = new Label
+            {
+                Text = "Contact Number *",
+                Font = new Font("Segoe UI Semibold", 9f),
+                ForeColor = Color.FromArgb(55, 65, 81),
+                AutoSize = true,
+                Location = new Point(leftWidth + columnSpacing, y - 22)
+            };
+            card.Controls.Add(lblContact);
+
+            _txtContactNumber = new TextBox
+            {
+                Width = rightWidth,
+                Location = new Point(leftWidth + columnSpacing, y)
+            };
+            ApplyPlaceholder(_txtContactNumber, "+63 XXX XXX XXXX");
+            card.Controls.Add(_txtContactNumber);
+            y = _txtApplicantName.Bottom + 20;
+
+            card.Controls.Add(CreateFieldLabel("Purpose *", ref y));
+            _txtPurpose = new TextBox { Width = CardWidth, Location = new Point(0, y) };
+            ApplyPlaceholder(_txtPurpose, "Purpose of the document");
+            card.Controls.Add(_txtPurpose);
+            y = _txtPurpose.Bottom + 20;
+
+            card.Controls.Add(CreateFieldLabel("Preferred Pickup Date *", ref y));
+            _dtpPickupDate = new DateTimePicker
+            {
+                Format = DateTimePickerFormat.Custom,
+                CustomFormat = "MMM dd, yyyy",
+                Width = leftWidth,
+                Location = new Point(0, y)
+            };
+            card.Controls.Add(_dtpPickupDate);
+
+            Label lblCopies = new Label
+            {
+                Text = "Number of Copies",
+                Font = new Font("Segoe UI Semibold", 9f),
+                ForeColor = Color.FromArgb(55, 65, 81),
+                AutoSize = true,
+                Location = new Point(leftWidth + columnSpacing, y - 22)
+            };
+            card.Controls.Add(lblCopies);
+
+            _numCopies = new NumericUpDown
+            {
+                Minimum = 1,
+                Maximum = 20,
+                Value = 1,
+                Width = 70,
+                Location = new Point(leftWidth + columnSpacing, y)
+            };
+            card.Controls.Add(_numCopies);
+            y = _dtpPickupDate.Bottom + 20;
+
+            card.Controls.Add(CreateFieldLabel("Additional Requirements", ref y));
+            _txtAdditionalRequirements = new TextBox
+            {
+                Multiline = true,
+                Width = CardWidth,
+                Height = 110,
+                Location = new Point(0, y),
+                ScrollBars = ScrollBars.Vertical
+            };
+            ApplyPlaceholder(_txtAdditionalRequirements, "Any special requirements or notes...");
+            card.Controls.Add(_txtAdditionalRequirements);
+            y = _txtAdditionalRequirements.Bottom + 26;
+
+            Panel buttonRow = new Panel
+            {
+                Location = new Point(0, y),
+                Size = new Size(CardWidth, 40)
+            };
+            card.Controls.Add(buttonRow);
+
+            _btnSubmit = new Button
+            {
+                Text = "Submit Request",
+                Size = new Size(215, 36),
+                BackColor = Color.FromArgb(34, 197, 94),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            _btnSubmit.FlatAppearance.BorderSize = 0;
+            _btnSubmit.Click += Submit_Click;
+            buttonRow.Controls.Add(_btnSubmit);
+
+            _btnSaveDraft = new Button
+            {
+                Text = "Save Draft",
+                Size = new Size(150, 36),
+                Location = new Point(230, 0),
+                BackColor = Color.FromArgb(229, 231, 235),
+                ForeColor = Color.FromArgb(55, 65, 81),
+                FlatStyle = FlatStyle.Flat
+            };
+            _btnSaveDraft.FlatAppearance.BorderSize = 0;
+            _btnSaveDraft.Click += SaveDraft_Click;
+            buttonRow.Controls.Add(_btnSaveDraft);
+            y = buttonRow.Bottom + 24;
+
+            Panel infoPanel = new Panel
+            {
+                Location = new Point(0, y),
+                Size = new Size(CardWidth, 130),
+                BackColor = Color.FromArgb(248, 250, 252),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            card.Controls.Add(infoPanel);
+
+            Label infoTitle = new Label
+            {
+                Text = "Processing Information",
+                Font = new Font("Segoe UI Semibold", 10f),
+                ForeColor = Color.FromArgb(31, 41, 55),
+                AutoSize = true,
+                Location = new Point(12, 10)
+            };
+            infoPanel.Controls.Add(infoTitle);
+
+            Label infoDetails = new Label
+            {
+                AutoSize = false,
+                Location = new Point(12, 35),
+                Size = new Size(infoPanel.Width - 24, 80),
+                Text = "• Processing time: 3-5 business days\r\n• You will receive SMS/email updates\r\n• Bring valid ID when picking up\r\n• Processing fees apply",
+                ForeColor = Color.FromArgb(75, 85, 99)
+            };
+            infoPanel.Controls.Add(infoDetails);
+
+            AcceptButton = _btnSubmit;
+        }
+
+        private Label CreateHeading(string text, Font font, ref int y, Color? color = null, int margin = 8)
+        {
+            Label label = new Label
+            {
+                AutoSize = true,
+                Text = text,
+                Font = font,
+                ForeColor = color ?? Color.FromArgb(30, 30, 30),
+                Location = new Point(0, y)
+            };
+            y = label.Bottom + margin;
+            return label;
+        }
+
+        private Label CreateFieldLabel(string text, ref int y)
+        {
+            Label label = new Label
+            {
+                Text = text,
+                Font = new Font("Segoe UI Semibold", 9f),
+                ForeColor = Color.FromArgb(55, 65, 81),
+                AutoSize = true,
+                Location = new Point(0, y)
+            };
+            y = label.Bottom + 4;
+            return label;
+        }
+
+        private void ApplyPlaceholder(TextBox textBox, string placeholder)
+        {
+            textBox.Tag = placeholder;
+            textBox.ForeColor = Color.Gray;
+            textBox.Text = placeholder;
+
+            textBox.GotFocus += (s, e) =>
+            {
+                if (textBox.Text == placeholder)
+                {
+                    textBox.Text = string.Empty;
+                    textBox.ForeColor = Color.FromArgb(31, 41, 55);
+                }
+            };
+
+            textBox.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(textBox.Text))
+                {
+                    textBox.Text = placeholder;
+                    textBox.ForeColor = Color.Gray;
+                }
+            };
+        }
+
+        private string ReadInput(TextBox textBox)
+        {
+            string placeholder = textBox.Tag as string;
+            string value = textBox.Text?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(placeholder) && value == placeholder && textBox.ForeColor == Color.Gray)
+            {
+                return string.Empty;
+            }
+
+            return value;
+        }
+
+        private void Submit_Click(object sender, EventArgs e)
+        {
+            if (!ValidateForm())
+            {
+                return;
+            }
+
+            MessageBox.Show(
+                "Your document request has been submitted. You will receive updates once it is processed.",
+                "Request Submitted",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            Close();
+        }
+
+        private void SaveDraft_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Draft saved locally. Return later to complete your submission.",
+                "Draft Saved",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            Close();
+        }
+
+        private bool ValidateForm()
+        {
+            if (_cmbDocumentType.SelectedIndex < 0)
+            {
+                ShowValidation("Please select a document type.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(ReadInput(_txtApplicantName)))
+            {
+                ShowValidation("Applicant name is required.");
+                return false;
+            }
+
+            string contact = ReadInput(_txtContactNumber);
+            if (string.IsNullOrWhiteSpace(contact) || contact.Count(char.IsDigit) < 9)
+            {
+                ShowValidation("Provide a valid contact number.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(ReadInput(_txtPurpose)))
+            {
+                ShowValidation("Please describe the purpose of the document.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void ShowValidation(string message)
+        {
+            MessageBox.Show(
+                message,
+                "Incomplete Form",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+    }
+}
