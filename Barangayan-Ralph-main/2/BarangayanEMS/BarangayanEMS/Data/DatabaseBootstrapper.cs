@@ -63,6 +63,20 @@ CREATE TABLE IF NOT EXISTS Users (
     PasswordSalt TEXT NOT NULL,
     CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS DocumentRequests (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    RequestId TEXT NOT NULL UNIQUE,
+    Type TEXT NOT NULL,
+    RequesterName TEXT NOT NULL,
+    DateFiled TEXT NOT NULL,
+    Status TEXT NOT NULL,
+    ContactNumber TEXT,
+    Purpose TEXT,
+    PickupDate TEXT NULL,
+    Copies INTEGER NOT NULL DEFAULT 1,
+    AdditionalRequirements TEXT
+);
 ";
                 command.ExecuteNonQuery();
             }

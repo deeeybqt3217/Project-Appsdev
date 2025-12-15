@@ -7,6 +7,8 @@ using System.Windows.Forms;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.IO;
+using BarangayanEMS;    
+using BarangayanEMS.Data; // added for repository access
 
 namespace BarangayanEMS
 {
@@ -39,6 +41,9 @@ namespace BarangayanEMS
         private Panel _pageFeedback;
         private Panel _pageAbout;
         private readonly string _userDisplayName;
+
+        // Keep a reference to the dashboard welcome label to enforce static behavior
+        private Label _contentWelcomeLabel;
 
         // ---------- SLIDE ANIMATION ----------
         private Timer _slideTimer;
@@ -79,14 +84,17 @@ namespace BarangayanEMS
         {
             InitializeComponent();        // Designer builds base layout
             _userDisplayName = string.IsNullOrWhiteSpace(userName) ? "Resident" : userName.Trim();
+
+            // Set header and make it static (non-hovering, non-clickable)
             UpdateHeaderGreeting();
-            MakeHeaderStatic();           // ensure header is informational only
-            ResolveCoreControls();        // find pnlContentHost
-            BuildPages(_userDisplayName);         // create “pages” inside host
-            SetupNavigation();            // hook sidebar nav
-            HookServicesNavFallback();    // fallback hook for Services
-            SetupSearchBox();             // placeholder behavior
-            SetupSlideTimer();            // page slide animation
+            MakeHeaderStatic();           
+
+            ResolveCoreControls();        
+            BuildPages(_userDisplayName); 
+            SetupNavigation();            
+            HookServicesNavFallback();    
+            SetupSearchBox();             
+            SetupSlideTimer();            
 
             ShowPage(DashboardPage.Dashboard, immediate: true);
         }
@@ -113,6 +121,11 @@ namespace BarangayanEMS
                 UseMnemonic = false
             };
 
+            // Remove possible event handlers affecting hover/click
+            old.MouseEnter -= lblSystem_Click;
+            old.MouseLeave -= lblRepublic_Click;
+            old.Click -= lblSystem_Click;
+
             Control parent = old.Parent ?? this;
             int index = (parent is null) ? -1 : parent.Controls.GetChildIndex(old, false);
             parent.Controls.Remove(old);
@@ -121,9 +134,11 @@ namespace BarangayanEMS
             {
                 parent.Controls.SetChildIndex(replacement, index);
             }
-        }
 
-       
+            // Ensure no hover effects can be attached going forward
+            replacement.Enabled = true;             // keep readable style
+            replacement.Cursor = Cursors.Default;   // no hand cursor
+        }
 
         // =========================================================
         //  HEADER TEXT
@@ -132,7 +147,9 @@ namespace BarangayanEMS
         {
             if (!string.IsNullOrWhiteSpace(_userDisplayName) && lblMainTitle != null)
             {
-                lblMainTitle.Text = $"Welcome back, {_userDisplayName}";
+                // Set once; do not change dynamically later                lblMainTitle.Text = $"Welcome back, {_userDisplayName}";
+                lblMainTitle.Cursor = Cursors.Default;
+                lblMainTitle.Enabled = true;
             }
         }
 
@@ -184,15 +201,21 @@ namespace BarangayanEMS
             };
             EnableDoubleBuffer(_pageDashboard);
 
-            // Big welcome text inside the content area
-            Label lblWelcome = new Label
+            // Big welcome text inside the content area (constant, non-hovering)
+            _contentWelcomeLabel = new Label
             {
                 AutoSize = true,
                 Text = $"Welcome back, {userName}",
                 Font = new Font("Segoe UI Semibold", 22f),
                 ForeColor = Color.FromArgb(32, 32, 32),
-                Location = new Point(24, 24)
+                Location = new Point(24, 24),
+                Cursor = Cursors.Default
             };
+            // Ensure no accidental interactivity
+            _contentWelcomeLabel.Enabled = true;
+            _contentWelcomeLabel.MouseEnter -= CardChild_ClickForward;
+            _contentWelcomeLabel.MouseLeave -= CardChild_ClickForward;
+            _contentWelcomeLabel.Click -= CardChild_ClickForward;
 
             Label lblSub = new Label
             {
@@ -200,14 +223,14 @@ namespace BarangayanEMS
                 Text = "Sign in to access your barangay services",
                 Font = new Font("Segoe UI", 10.5f),
                 ForeColor = Color.DimGray,
-                Location = new Point(26, 60)
+                Location = new Point(26, 60),
+                Cursor = Cursors.Default
             };
 
-            _pageDashboard.Controls.Add(lblWelcome);
+            _pageDashboard.Controls.Add(_contentWelcomeLabel);
             _pageDashboard.Controls.Add(lblSub);
 
             // ===== METRIC CARDS (TOP ROW) =====
-            // positions tuned to resemble the reference UI
             _pageDashboard.Controls.Add(CreateMetricCard(
                 "👥 Total Population",
                 "204,500",
@@ -228,8 +251,8 @@ namespace BarangayanEMS
                 Color.FromArgb(130, 84, 245),
                 new Point(628, 110)
             ));
+
             // ===== LARGE CARDS (SECOND ROW) =====
-            // DOCUMENT REQUESTS
             Panel cardDoc = new Panel
             {
                 Size = new Size(268, 190),
@@ -309,7 +332,6 @@ namespace BarangayanEMS
                 {
                     e.Graphics.FillPath(brush, path);
                 }
-                // subtle shadow on hover
                 if (blotterHovered)
                 {
                     using (Pen shadow = new Pen(Color.FromArgb(60, 0, 0, 0), 6))
@@ -757,6 +779,20 @@ namespace BarangayanEMS
         // =========================================================
         //  NAVIGATION: WIRE SIDEBAR PANELS TO PAGES
         // =========================================================
+        // Helper: climb up to the registered nav panel from any clicked child
+        private Panel GetNavPanelFromSender(object sender)
+        {
+            Control c = sender as Control;
+            while (c != null)
+            {
+                var p = c as Panel;
+                if (p != null && _navMap.ContainsKey(p))
+                    return p;
+                c = c.Parent;
+            }
+            return null;
+        }
+
         private void SetupNavigation()
         {
             RegisterNavPanel("navDashboard", DashboardPage.Dashboard);
@@ -780,12 +816,14 @@ namespace BarangayanEMS
             nav.BackColor = Color.Transparent;
             nav.Tag = false; // active flag
             nav.Paint += (s, e) => PaintNavItem(nav, e);
-        
+
+            // Core handlers on the panel itself
             nav.MouseEnter += (s, e) => Nav_MouseEnter(nav);
             nav.MouseLeave += (s, e) => Nav_MouseLeave(nav);
             nav.Click += Nav_Click;
 
-            foreach (Control child in nav.Controls)
+            // Make all descendants forward hover/click into the parent panel reliably
+            foreach (var child in EnumerateDescendants(nav))
             {
                 child.Cursor = Cursors.Hand;
                 child.MouseEnter += (s, e) => Nav_MouseEnter(nav);
@@ -800,68 +838,22 @@ namespace BarangayanEMS
             }
         }
 
-        private void Nav_MouseEnter(Panel nav)
-        {
-            if (nav == _activeNavPanel) return;
-            nav.BackColor = Color.FromArgb(245, 248, 255);
-            nav.Invalidate();
-        }
-
-        private void Nav_MouseLeave(Panel nav)
-        {
-            if (nav == _activeNavPanel) return;
-            nav.BackColor = Color.Transparent;
-            nav.Invalidate();
-        }
-
-        private void SetNavActive(Panel nav, bool active)
-        {
-            if (nav == null) return;
-            nav.Tag = active; // store active flag for painter
-            nav.BackColor = active ? Color.Transparent : Color.Transparent; // painter draws background when active
-            ApplyNavTextColors(nav, active);
-            nav.Invalidate();
-        }
-
-        private void ApplyNavTextColors(Panel nav, bool active)
-        {
-            if (nav == null) return;
-            foreach (Control child in nav.Controls)
-            {
-                if (active)
-                {
-                    child.ForeColor = NavAccent;
-                }
-                else
-                {
-                    child.ForeColor = Color.FromArgb(90, 90, 90); // neutral gray
-                }
-            }
-        }
-
         private void Nav_Click(object sender, EventArgs e)
         {
-            if (_isSliding) return; // ignore while animating
-
-            Panel nav = sender as Panel;
-            if (nav == null && sender is Control c)
-                nav = c.Parent as Panel;
-
-            if (nav == null || !_navMap.ContainsKey(nav))
-                return;
+            // Instant navigation; avoid blocking when a previous slide is in progress
+            Panel nav = GetNavPanelFromSender(sender);
+            if (nav == null) return;
 
             DashboardPage target = _navMap[nav];
-            if (target == _activePage && _activeNavPanel == nav)
-                return;
 
-            // deactivate previous active
-            SetNavActive(_activeNavPanel, false);
+            if (_activeNavPanel != null && _activeNavPanel != nav)
+                SetNavActive(_activeNavPanel, false);
 
-            // activate clicked
             SetNavActive(nav, true);
             _activeNavPanel = nav;
+            _activePage = target;
 
-            ShowPage(target, immediate: false);
+            ShowPage(target, immediate: true);
         }
 
         // =========================================================
@@ -1029,29 +1021,29 @@ namespace BarangayanEMS
         // =========================================================
         private void cardDocumentRequests_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(
-                "This feature is available soon.",
-                "Coming Soon",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            using (var f = new DocumentRequestForm())
+            {
+                f.StartPosition = FormStartPosition.CenterParent;
+                f.ShowDialog(this);
+            }
         }
 
         private void OpenSubmitBlotterForm()
         {
-            MessageBox.Show(
-                "This feature is available soon.",
-                "Coming Soon",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            using (var f = new SubmitBlotterForm())
+            {
+                f.StartPosition = FormStartPosition.CenterParent;
+                f.ShowDialog(this);
+            }
         }
 
         private void cardBlotterReports_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(
-                "This feature is available soon.",
-                "Coming Soon",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            using (var f = new BlotterReportForm())
+            {
+                f.StartPosition = FormStartPosition.CenterParent;
+                f.ShowDialog(this);
+            }
         }
 
         private void ServiceCard_Click(object sender, EventArgs e)
@@ -1103,6 +1095,41 @@ namespace BarangayanEMS
             if (sender is Control child && child.Parent != null)
             {
                 this.InvokeOnClick(child.Parent, EventArgs.Empty);
+            }
+        }
+
+        // =========================================================
+        //  NAVIGATION VISUAL HELPERS
+        // =========================================================
+        private void Nav_MouseEnter(Panel nav)
+        {
+            if (nav == _activeNavPanel) return;
+            nav.BackColor = Color.FromArgb(245, 248, 255);
+            nav.Invalidate();
+        }
+
+        private void Nav_MouseLeave(Panel nav)
+        {
+            if (nav == _activeNavPanel) return;
+            nav.BackColor = Color.Transparent;
+            nav.Invalidate();
+        }
+
+        private void SetNavActive(Panel nav, bool active)
+        {
+            if (nav == null) return;
+            nav.Tag = active;
+            nav.BackColor = Color.Transparent; // painter draws when active
+            ApplyNavTextColors(nav, active);
+            nav.Invalidate();
+        }
+
+        private void ApplyNavTextColors(Panel nav, bool active)
+        {
+            if (nav == null) return;
+            foreach (Control child in nav.Controls)
+            {
+                child.ForeColor = active ? NavAccent : Color.FromArgb(90, 90, 90);
             }
         }
 
@@ -1179,68 +1206,9 @@ namespace BarangayanEMS
 
         private void HookServicesNavFallback()
         {
-            // If the expected panel was found and wired, skip.
-            Panel explicitNav = FindPanel("navServices");
-            if (explicitNav != null && _navMap.ContainsKey(explicitNav))
-                return;
-
-            var candidates = EnumerateDescendants(this)
-                .Where(c =>
-                    (!string.IsNullOrEmpty(c.Name) && c.Name.IndexOf("services", StringComparison.OrdinalIgnoreCase) >= 0)
-                    || (!string.IsNullOrEmpty(c.Text) && c.Text.IndexOf("services", StringComparison.OrdinalIgnoreCase) >= 0))
-                .ToList();
-
-            foreach (var c in candidates)
-            {
-                // Find a panel container to act as the nav item. Prefer the parent panel; if none, try self if panel.
-                Panel p = c.Parent as Panel ?? (c as Panel);
-                if (p == null) {
-                    // Fall back to making the control clickable but without active-state tracking
-                    c.Cursor = Cursors.Hand;
-                    c.Click -= ServicesNav_Click;
-                    c.Click += ServicesNav_Click;
-                    continue;
-                }
-
-                // Register in nav map if not already registered so active-state behaves like other items
-                if (!_navMap.ContainsKey(p))
-                {
-                    _navMap.Add(p, DashboardPage.Services);
-
-                    p.Cursor = Cursors.Hand;
-                    p.MouseEnter -= (s, e) => Nav_MouseEnter(p);
-                    p.MouseLeave -= (s, e) => Nav_MouseLeave(p);
-                    p.MouseEnter += (s, e) => Nav_MouseEnter(p);
-                    p.MouseLeave += (s, e) => Nav_MouseLeave(p);
-
-                    // Use the same click route as normal nav so active visual toggles consistently
-                    p.Click -= Nav_Click;
-                    p.Click += Nav_Click;
-                }
-
-                // Also forward clicks from the child control to the parent panel
-                c.Cursor = Cursors.Hand;
-                c.Click -= Nav_Click;
-                c.Click += Nav_Click;
-            }
-        }
-
-        private void ServicesNav_Click(object sender, EventArgs e)
-        {
-            if (_isSliding) return; // ignore while animating
-
-            // Update visual active state if coming from a sidebar item
-            Panel navPanel = sender as Panel ?? (sender as Control)?.Parent as Panel;
-            if (navPanel != null)
-            {
-                if (_activeNavPanel != null) SetNavActive(_activeNavPanel, false);
-                SetNavActive(navPanel, true);
-                _activeNavPanel = navPanel;
-            }
-
-            // Ensure Services is set as the logical active page
-            _activePage = DashboardPage.Services;
-            ShowPage(DashboardPage.Services, immediate: false);
+            // Disable fallback auto-wiring to prevent hijacking clicks to Services.
+            // Ensure the sidebar panel is named `navServices` and registered via `SetupNavigation`.
+            return;
         }
     }
 
@@ -1253,6 +1221,8 @@ namespace BarangayanEMS
         private readonly Panel _statusPanel;
         private readonly ComboBox _cmbStatus;
         private DocumentRequest _selectedRequest;
+        private readonly DocumentRequestRepository _repo = new DocumentRequestRepository();
+        private string _pendingSelectId; // remember a request id to select after binding
 
         private static readonly string[] StatusOptions =
         {
@@ -1347,16 +1317,25 @@ namespace BarangayanEMS
             {
                 using (var entry = new DocumentRequestEntryForm())
                 {
-                    entry.ShowDialog(this);
+                    var result = entry.ShowDialog(this);
+                    if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(entry.SavedRequestId))
+                    {
+                        _pendingSelectId = entry.SavedRequestId; // defer selecting until bound
+                        RefreshRequests();
+                        return;
+                    }
                 }
+                RefreshRequests();
             };
             actionBar.Controls.Add(btnNew);
 
+            // Edit should open the editable form
             Button btnEdit = CreateActionButton("Edit Status", Color.FromArgb(44, 124, 228));
-            btnEdit.Click += (s, e) => ToggleStatusPanel();
+            btnEdit.Click += (s, e) => OpenPreviewEdit();
             actionBar.Controls.Add(btnEdit);
 
-            Button btnView = CreateActionButton("View Details", Color.FromArgb(245, 158, 11));
+            // View should show details in a message box
+            Button btnView = CreateActionButton("View Status", Color.FromArgb(245, 158, 11));
             btnView.Click += (s, e) =>
             {
                 if (_selectedRequest == null)
@@ -1365,12 +1344,14 @@ namespace BarangayanEMS
                     return;
                 }
 
-                MessageBox.Show(
-                    $"Request ID: {_selectedRequest.RequestId}\nType: {_selectedRequest.Type}\n" +
-                    $"Requester: {_selectedRequest.RequesterName}\nDate Filed: {_selectedRequest.DateFiled:yyyy-MM-dd}\nStatus: {_selectedRequest.Status}\nTimeline: {_selectedRequest.Actions}",
-                    "Request Details",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                string details =
+                    $"Request ID: {_selectedRequest.RequestId}\n" +
+                    $"Type: {_selectedRequest.Type}\n" +
+                    $"Requester: {_selectedRequest.RequesterName}\n" +
+                    $"Date Filed: {_selectedRequest.DateFiled:yyyy-MM-dd}\n" +
+                    $"Status: {_selectedRequest.Status}";
+
+                MessageBox.Show(details, "Request Details", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
             actionBar.Controls.Add(btnView);
 
@@ -1411,13 +1392,7 @@ namespace BarangayanEMS
                     _txtSearch.ForeColor = Color.Gray;
                 }
             };
-            _txtSearch.TextChanged += (s, e) =>
-            {
-                if (_txtSearch.Focused || _txtSearch.Text != "Search")
-                {
-                    ApplyFilter(_txtSearch.Text);
-                }
-            };
+            _txtSearch.TextChanged += (s, e) => ApplyFilter(_txtSearch.Text);
 
             // spacer under actions
             Panel actionsSpacer = new Panel { Dock = DockStyle.Top, Height = 10 };
@@ -1435,7 +1410,6 @@ namespace BarangayanEMS
 
             _grid = new DataGridView
             {
-                Parent = gridHost,
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowUserToAddRows = false,
@@ -1448,6 +1422,7 @@ namespace BarangayanEMS
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
                 MultiSelect = false
             };
+            gridHost.Controls.Add(_grid);
 
             // Improve readability
             _grid.RowTemplate.Height = 40;
@@ -1502,7 +1477,7 @@ namespace BarangayanEMS
             });
 
             _grid.SelectionChanged += (s, e) => UpdateSelection();
-            _grid.CellDoubleClick += (s, e) => ToggleStatusPanel();
+            _grid.CellDoubleClick += (s, e) => OpenPreviewEdit();
 
             // Status floating panel
             _statusPanel = new Panel
@@ -1552,10 +1527,11 @@ namespace BarangayanEMS
                 _statusPanel.Location = new Point(gridHost.Width - _statusPanel.Width - 6, 6);
             };
 
-            LoadRequests();
+            // Ensure first load populates reliably
+            Shown += (s, e) => RefreshRequests();
         }
 
-        private Button CreateActionButton(string text, Color bgColor)
+        private Button CreateActionButton(String text, Color bgColor)
         {
             return new Button
             {
@@ -1569,32 +1545,70 @@ namespace BarangayanEMS
             };
         }
 
-        private void LoadRequests()
+        private void RefreshRequests()
         {
-            Random rng = new Random();
             _allRequests.Clear();
-            for (int i = 1; i <= 100; i++)
+            foreach (var r in _repo.GetAll())
             {
-                _allRequests.Add(new DocumentRequest(
-                    $"REQ-{i:D4}",
-                    "Barangay Clearance",
-                    $"Resident {rng.Next(1, 101)}",
-                    DateTime.Today.AddDays(-rng.Next(0, 30)),
-                    (i % 5 == 0) ? "For Pickup" : "Pending",
-                    "View Details, Edit Status"
-                ));
+                _allRequests.Add(new DocumentRequest
+                {
+                    RequestId = r.RequestId,
+                    Type = r.Type,
+                    RequesterName = r.RequesterName,
+                    DateFiled = r.DateFiled,
+                    Status = r.Status,
+                    Actions = "View Details, Edit Status",
+                    ContactNumber = r.ContactNumber,
+                    Purpose = r.Purpose,
+                    PickupDate = r.PickupDate,
+                    Copies = r.Copies,
+                    AdditionalRequirements = r.AdditionalRequirements
+                });
             }
 
-            _bindingSource.DataSource = _allRequests;
+            _bindingSource.DataSource = _allRequests.ToList();
             _grid.DataSource = _bindingSource;
-
             UpdateSelection();
+
+            // If we have a record to select (e.g., just created/edited), do it after binding completes
+            if (!string.IsNullOrWhiteSpace(_pendingSelectId))
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    SelectRowByRequestId(_pendingSelectId);
+                    _pendingSelectId = null;
+                }));
+            }
+        }
+
+        private void SelectRowByRequestId(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId)) return;
+            for (int i = 0; i < _grid.Rows.Count; i++)
+            {
+                var row = _grid.Rows[i];
+                var item = row.DataBoundItem as DocumentRequest;
+                if (item != null && string.Equals(item.RequestId, requestId, StringComparison.OrdinalIgnoreCase))
+                {
+                    _grid.ClearSelection();
+                    row.Selected = true;
+                    if (i >= 0) _grid.FirstDisplayedScrollingRowIndex = i;
+                    UpdateSelection();
+                    break;
+                }
+            }
         }
 
         private void ApplyFilter(string query)
         {
-            _bindingSource.Filter = string.IsNullOrWhiteSpace(query) ? null :
-                $"RequesterName LIKE '%{query}%' OR RequestId LIKE '%{query}%'";
+            IEnumerable<DocumentRequest> data = _allRequests;
+            if (!string.IsNullOrWhiteSpace(query) && query != "Search")
+            {
+                string q = query.Trim().ToLowerInvariant();
+                data = data.Where(d => (d.RequesterName ?? string.Empty).ToLowerInvariant().Contains(q)
+                                     || (d.RequestId ?? string.Empty).ToLowerInvariant().Contains(q));
+            }
+            _bindingSource.DataSource = data.ToList();
         }
 
         private void ToggleStatusPanel()
@@ -1628,10 +1642,10 @@ namespace BarangayanEMS
 
         private void SaveChanges()
         {
-            if (_selectedRequest == null) return;
+            if (_selectedRequest == null) { ToggleStatusPanel(); return; }
 
             string newStatus = _cmbStatus.SelectedItem as string;
-            if (newStatus == null || newStatus == _selectedRequest.Status)
+            if (string.IsNullOrWhiteSpace(newStatus) || newStatus == _selectedRequest.Status)
             {
                 ToggleStatusPanel();
                 return;
@@ -1645,6 +1659,7 @@ namespace BarangayanEMS
 
             if (result == DialogResult.Yes)
             {
+                _repo.UpdateStatus(_selectedRequest.RequestId, newStatus);
                 _selectedRequest.Status = newStatus;
                 _bindingSource.ResetBindings(false);
                 ToggleStatusPanel();
@@ -1667,8 +1682,31 @@ namespace BarangayanEMS
 
             if (result == DialogResult.Yes)
             {
-                _allRequests.Remove(_selectedRequest);
-                ApplyFilter(_txtSearch.Text);
+                _repo.Delete(_selectedRequest.RequestId);
+                RefreshRequests();
+            }
+        }
+
+        private void OpenPreviewEdit()
+        {
+            if (_selectedRequest == null)
+            {
+                ShowSelectPrompt();
+                return;
+            }
+
+            var record = _repo.GetByRequestId(_selectedRequest.RequestId);
+            if (record == null)
+            {
+                MessageBox.Show("Record not found.", "Document Requests", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            using (var entry = new DocumentRequestEntryForm(record))
+            {
+                var res = entry.ShowDialog(this);
+                _pendingSelectId = res == DialogResult.OK ? (entry.SavedRequestId ?? record.RequestId) : null;
+                RefreshRequests();
             }
         }
 
@@ -1683,15 +1721,7 @@ namespace BarangayanEMS
 
         private sealed class DocumentRequest
         {
-            internal DocumentRequest(string id, string type, string requester, DateTime dateFiled, string status, string actions)
-            {
-                RequestId = id;
-                Type = type;
-                RequesterName = requester;
-                DateFiled = dateFiled;
-                Status = status;
-                Actions = actions;
-            }
+            internal DocumentRequest() { }
 
             public string RequestId { get; set; }
             public string Type { get; set; }
@@ -1699,6 +1729,13 @@ namespace BarangayanEMS
             public DateTime DateFiled { get; set; }
             public string Status { get; set; }
             public string Actions { get; set; }
+
+            // extra fields for preview/edit
+            public string ContactNumber { get; set; }
+            public string Purpose { get; set; }
+            public DateTime? PickupDate { get; set; }
+            public int Copies { get; set; }
+            public string AdditionalRequirements { get; set; }
         }
     }
 
@@ -1714,6 +1751,11 @@ namespace BarangayanEMS
         private readonly TextBox _txtAdditionalRequirements;
         private readonly Button _btnSubmit;
         private readonly Button _btnSaveDraft;
+
+        private readonly DocumentRequestRepository _repo = new DocumentRequestRepository();
+        private readonly DocumentRequestRepository.DocumentRequestRecord _editingRecord;
+
+        public string SavedRequestId { get; private set; }
 
         internal DocumentRequestEntryForm()
         {
@@ -1856,7 +1898,7 @@ namespace BarangayanEMS
 
             _btnSaveDraft = new Button
             {
-                Text = "Save Draft",
+                Text = "Cancel",
                 Size = new Size(150, 36),
                 Location = new Point(230, 0),
                 BackColor = Color.FromArgb(229, 231, 235),
@@ -1864,7 +1906,7 @@ namespace BarangayanEMS
                 FlatStyle = FlatStyle.Flat
             };
             _btnSaveDraft.FlatAppearance.BorderSize = 0;
-            _btnSaveDraft.Click += SaveDraft_Click;
+            _btnSaveDraft.Click += (s, e) => Close();
             buttonRow.Controls.Add(_btnSaveDraft);
             y = buttonRow.Bottom + 24;
 
@@ -1898,6 +1940,27 @@ namespace BarangayanEMS
             infoPanel.Controls.Add(infoDetails);
 
             AcceptButton = _btnSubmit;
+        }
+
+        internal DocumentRequestEntryForm(DocumentRequestRepository.DocumentRequestRecord editing)
+            : this()
+        {
+            _editingRecord = editing;
+            Text = "Edit Document Request";
+            _btnSubmit.Text = "Save Changes";
+
+            // prefill
+            _cmbDocumentType.SelectedItem = editing.Type;
+            _txtApplicantName.Text = editing.RequesterName;
+            _txtApplicantName.ForeColor = Color.FromArgb(31, 41, 55);
+            _txtContactNumber.Text = editing.ContactNumber ?? string.Empty;
+            _txtContactNumber.ForeColor = Color.FromArgb(31, 41, 55);
+            _txtPurpose.Text = editing.Purpose ?? string.Empty;
+            _txtPurpose.ForeColor = Color.FromArgb(31, 41, 55);
+            _dtpPickupDate.Value = (editing.PickupDate ?? DateTime.Today);
+            _numCopies.Value = Math.Max(1, editing.Copies);
+            _txtAdditionalRequirements.Text = editing.AdditionalRequirements ?? string.Empty;
+            _txtAdditionalRequirements.ForeColor = Color.FromArgb(31, 41, 55);
         }
 
         private Label CreateHeading(string text, Font font, ref int y, Color? color = null, int margin = 8)
@@ -1972,23 +2035,70 @@ namespace BarangayanEMS
                 return;
             }
 
-            MessageBox.Show(
-                "Your document request has been submitted. You will receive updates once it is processed.",
-                "Request Submitted",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            if (_editingRecord == null)
+            {
+                var rec = new DocumentRequestRepository.DocumentRequestRecord
+                {
+                    Type = _cmbDocumentType.SelectedItem?.ToString(),
+                    RequesterName = ReadInput(_txtApplicantName),
+                    DateFiled = DateTime.Today,
+                    Status = "Pending",
+                    ContactNumber = ReadInput(_txtContactNumber),
+                    Purpose = ReadInput(_txtPurpose),
+                    PickupDate = _dtpPickupDate.Value.Date,
+                    Copies = (int)_numCopies.Value,
+                    AdditionalRequirements = ReadInput(_txtAdditionalRequirements)
+                };
+                string newId = _repo.Insert(rec);
+                SavedRequestId = newId;
+
+                MessageBox.Show(
+                    "Document request submitted successfully.",
+                    "Success",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                DialogResult = DialogResult.OK;
+
+                // Reset fields for a clean state before closing
+                ResetFormFields();
+            }
+            else
+            {
+                _editingRecord.Type = _cmbDocumentType.SelectedItem?.ToString();
+                _editingRecord.RequesterName = ReadInput(_txtApplicantName);
+                _editingRecord.ContactNumber = ReadInput(_txtContactNumber);
+                _editingRecord.Purpose = ReadInput(_txtPurpose);
+                _editingRecord.PickupDate = _dtpPickupDate.Value.Date;
+                _editingRecord.Copies = (int)_numCopies.Value;
+                _editingRecord.AdditionalRequirements = ReadInput(_txtAdditionalRequirements);
+
+                _repo.UpdateDetails(_editingRecord);
+                SavedRequestId = _editingRecord.RequestId;
+
+                MessageBox.Show(
+                    "Changes saved.",
+                    "Document Request",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                DialogResult = DialogResult.OK;
+
+                ResetFormFields();
+            }
 
             Close();
         }
 
-        private void SaveDraft_Click(object sender, EventArgs e)
+        private void ResetFormFields()
         {
-            MessageBox.Show(
-                "Draft saved locally. Return later to complete your submission.",
-                "Draft Saved",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            Close();
+            _cmbDocumentType.SelectedIndex = -1;
+            _txtApplicantName.Text = string.Empty;
+            _txtContactNumber.Text = string.Empty;
+            _txtPurpose.Text = string.Empty;
+            _dtpPickupDate.Value = DateTime.Today;
+            _numCopies.Value = 1;
+            _txtAdditionalRequirements.Text = string.Empty;
         }
 
         private bool ValidateForm()
