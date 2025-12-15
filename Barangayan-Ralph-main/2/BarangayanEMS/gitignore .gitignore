@@ -1,0 +1,20 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build outputs
+bin/
+obj/
+
+# Packages
+packages/
+
+# Logs/temp
+*.log
+*.tmp
+*.cache
+
+git rm -r --cached .vs bin obj packages
+git add .
+git status
