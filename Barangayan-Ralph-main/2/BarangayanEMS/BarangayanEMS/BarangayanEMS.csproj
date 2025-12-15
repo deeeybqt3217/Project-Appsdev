@@ -120,6 +120,7 @@
       <DependentUpon>DashboardForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Data\DatabaseBootstrapper.cs" />
+    <Compile Include="Data\DocumentRequestRepository.cs" />
     <Compile Include="Data\PasswordHasher.cs" />
     <Compile Include="Data\UserRecord.cs" />
     <Compile Include="Data\UserRepository.cs" />
