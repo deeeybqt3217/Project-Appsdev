@@ -123,13 +123,7 @@ namespace BarangayanEMS
             }
         }
 
-        private void DeactivateAllNav()
-        {
-            foreach (var kv in _navMap.ToList())
-            {
-                SetNavActive(kv.Key, false);
-            }
-        }
+       
 
         // =========================================================
         //  HEADER TEXT
