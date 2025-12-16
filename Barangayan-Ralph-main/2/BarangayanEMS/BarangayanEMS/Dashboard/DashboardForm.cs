@@ -93,7 +93,7 @@ namespace BarangayanEMS
             BuildPages(_userDisplayName); 
             SetupNavigation();            
             HookServicesNavFallback();    
-            SetupSearchBox();             
+            SetupSearchBox();              
             SetupSlideTimer();            
 
             ShowPage(DashboardPage.Dashboard, immediate: true);
@@ -806,6 +806,13 @@ namespace BarangayanEMS
         {
             Panel nav = FindPanel(panelName);
             if (nav == null) return;
+            RegisterNavPanel(nav, page);
+        }
+
+        // Overload to register a panel instance directly
+        private void RegisterNavPanel(Panel nav, DashboardPage page)
+        {
+            if (nav == null) return;
 
             if (_navMap.ContainsKey(nav)) return;
             _navMap.Add(nav, page);
@@ -1049,7 +1056,7 @@ namespace BarangayanEMS
         private void ServiceCard_Click(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "This feature is available soon.",
+                "This feature will be available soon.",
                 "Coming Soon",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -1058,7 +1065,7 @@ namespace BarangayanEMS
         private void NavigateService(string serviceName)
         {
             MessageBox.Show(
-                "This feature is available soon.",
+                "This feature will be available soon.",
                 "Coming Soon",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -1206,9 +1213,23 @@ namespace BarangayanEMS
 
         private void HookServicesNavFallback()
         {
-            // Disable fallback auto-wiring to prevent hijacking clicks to Services.
-            // Ensure the sidebar panel is named `navServices` and registered via `SetupNavigation`.
-            return;
+            // Try to locate a sidebar panel that visually represents "Services" when named controls are missing.
+            // Find a panel whose child label text contains "Services".
+            var allPanels = this.Controls.OfType<Panel>().Concat(EnumerateDescendants(this).OfType<Panel>()).ToList();
+            foreach (var p in allPanels)
+            {
+                // Skip already registered
+                if (_navMap.ContainsKey(p)) continue;
+
+                // Look for a label child with text containing "Services"
+                var label = p.Controls.OfType<Label>().FirstOrDefault(l =>
+                    !string.IsNullOrWhiteSpace(l.Text) && l.Text.IndexOf("Services", StringComparison.OrdinalIgnoreCase) >= 0);
+                if (label != null)
+                {
+                    RegisterNavPanel(p, DashboardPage.Services);
+                    break;
+                }
+            }
         }
     }
 
