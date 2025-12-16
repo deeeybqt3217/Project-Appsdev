@@ -122,9 +122,13 @@
     <Compile Include="Data\BlotterRepo.cs" />
     <Compile Include="Data\DatabaseBootstrapper.cs" />
     <Compile Include="Data\DocumentRequestRepository.cs" />
+    <Compile Include="Data\FeedbackRepository.cs" />
     <Compile Include="Data\PasswordHasher.cs" />
     <Compile Include="Data\UserRecord.cs" />
     <Compile Include="Data\UserRepository.cs" />
+    <Compile Include="FeedBack\FeedbackForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Icons\IconPictureBox.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -185,7 +189,6 @@
   <ItemGroup>
     <Folder Include="About Us\" />
     <Folder Include="DocumentRequests\" />
-    <Folder Include="FeedBack\" />
     <Folder Include="Requirements\" />
     <Folder Include="Services\" />
   </ItemGroup>

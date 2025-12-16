@@ -422,8 +422,8 @@ namespace BarangayanEMS
             // ----- OTHER PAGES (PLACEHOLDERS) -----
             _pageServices = CreateServicesPage();
             _pageRequirements = CreateRequirementsPage();
-            _pageFeedback = CreatePlaceholderPage("Feedback", Color.FromArgb(245, 158, 11));
-            _pageAbout = CreatePlaceholderPage("About Barangayan EMS", Color.FromArgb(139, 92, 246));
+            _pageFeedback = CreateFeedbackPage(userName);
+            _pageAbout = CreateAboutPage();
 
             EnableDoubleBuffer(_pageServices);
             EnableDoubleBuffer(_pageRequirements);
@@ -435,6 +435,250 @@ namespace BarangayanEMS
             _contentHost.Controls.Add(_pageRequirements);
             _contentHost.Controls.Add(_pageFeedback);
             _contentHost.Controls.Add(_pageAbout);
+        }
+
+        private Panel CreateFeedbackPage(string userName)
+        {
+            var repo = new FeedbackRepository(); // ensures table exists
+
+            Panel page = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255),
+                Visible = false
+            };
+            EnableDoubleBuffer(page);
+
+            // Card container
+            Panel card = new Panel
+            {
+                Size = new Size(560, 320),
+                Location = new Point(280, 130),
+                BackColor = Color.White,
+                Padding = new Padding(24)
+            };
+            EnableDoubleBuffer(card);
+            int cardCornerRadius = 18;
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, cardCornerRadius))
+                using (SolidBrush fill = new SolidBrush(Color.White))
+                using (Pen border = new Pen(Color.FromArgb(228, 231, 255)))
+                {
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            };
+            card.Resize += (s, e) =>
+            {
+                card.Region = new Region(RoundedRect(new Rectangle(0, 0, card.Width, card.Height), cardCornerRadius));
+            };
+            // apply region once
+            card.Region = new Region(RoundedRect(new Rectangle(0, 0, card.Width, card.Height), cardCornerRadius));
+            page.Controls.Add(card);
+
+            int y = 0;
+            Label lblHeader = new Label
+            {
+                AutoSize = true,
+                Text = "Feedback System",
+                Font = new Font("Segoe UI Semibold", 14f),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(0, y)
+            };
+            card.Controls.Add(lblHeader);
+            y = lblHeader.Bottom + 4;
+
+            Label lblDesc = new Label
+            {
+                AutoSize = false,
+                Size = new Size(card.Width - card.Padding.Horizontal, 36),
+                Text = "Share your suggestions, complaints, or feedback to help us improve our services.",
+                Font = new Font("Segoe UI", 9.6f),
+                ForeColor = Color.FromArgb(90, 90, 90),
+                Location = new Point(0, y)
+            };
+            card.Controls.Add(lblDesc);
+            y = lblDesc.Bottom + 12;
+
+            // Inside card: Feedback Type
+            Label lblType = new Label
+            {
+                AutoSize = true,
+                Text = "Feedback Type",
+                Font = new Font("Segoe UI Semibold", 9.8f),
+                ForeColor = Color.FromArgb(55, 65, 81),
+                Location = new Point(0, y),
+                BackColor = Color.Transparent
+            };
+            card.Controls.Add(lblType);
+            y = lblType.Bottom + 6;
+
+            // Rounded host for ComboBox (to simulate clean input)
+            Panel typeHost = new Panel
+            {
+                Size = new Size(card.Width - card.Padding.Horizontal, 40),
+                Location = new Point(0, y),
+                BackColor = Color.White
+            };
+            typeHost.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, typeHost.Width - 1, typeHost.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 10))
+                using (SolidBrush fill = new SolidBrush(Color.White))
+                using (Pen border = new Pen(Color.FromArgb(228, 231, 255)))
+                {
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            };
+            typeHost.Resize += (s, e) => typeHost.Region = new Region(RoundedRect(new Rectangle(0, 0, typeHost.Width, typeHost.Height), 10));
+            card.Controls.Add(typeHost);
+
+            ComboBox cmbType = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(12, 8),
+                Width = typeHost.Width - 24,
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.Gray
+            };
+            cmbType.Items.AddRange(new object[] { "Select feedback type", "Suggestion", "Complaint", "Bug Report", "Other" });
+            cmbType.SelectedIndex = 0;
+            cmbType.SelectedIndexChanged += (s, e2) =>
+            {
+                cmbType.ForeColor = (cmbType.SelectedIndex == 0) ? Color.Gray : Color.FromArgb(31, 41, 55);
+            };
+            typeHost.Controls.Add(cmbType);
+            y = typeHost.Bottom + 14;
+
+            // Your Feedback
+            Label lblMsg = new Label
+            {
+                AutoSize = true,
+                Text = "Your Feedback",
+                Font = new Font("Segoe UI Semibold", 9.8f),
+                ForeColor = Color.FromArgb(55, 65, 81),
+                Location = new Point(0, y),
+                BackColor = Color.Transparent
+            };
+            card.Controls.Add(lblMsg);
+            y = lblMsg.Bottom + 6;
+
+            // Rounded host for TextBox
+            Panel msgHost = new Panel
+            {
+                Size = new Size(card.Width - card.Padding.Horizontal, 96),
+                Location = new Point(0, y),
+                BackColor = Color.White
+            };
+            msgHost.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, msgHost.Width - 1, msgHost.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 10))
+                using (SolidBrush fill = new SolidBrush(Color.White))
+                using (Pen border = new Pen(Color.FromArgb(228, 231, 255)))
+                {
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            };
+            msgHost.Resize += (s, e) => msgHost.Region = new Region(RoundedRect(new Rectangle(0, 0, msgHost.Width, msgHost.Height), 10));
+            card.Controls.Add(msgHost);
+
+            TextBox txtMsg = new TextBox
+            {
+                Multiline = true,
+                BorderStyle = BorderStyle.None,
+                Location = new Point(12, 10),
+                Size = new Size(msgHost.Width - 24, msgHost.Height - 20),
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.Gray,
+                Text = "Share your thoughts…"
+            };
+            txtMsg.GotFocus += (s, e) =>
+            {
+                if (txtMsg.ForeColor == Color.Gray)
+                {
+                    txtMsg.Text = string.Empty;
+                    txtMsg.ForeColor = Color.FromArgb(31, 41, 55);
+                }
+            };
+            txtMsg.LostFocus += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(txtMsg.Text))
+                {
+                    txtMsg.Text = "Share your thoughts…";
+                    txtMsg.ForeColor = Color.Gray;
+                }
+            };
+            msgHost.Controls.Add(txtMsg);
+            y = msgHost.Bottom + 16;
+
+            Button btnSubmit = new Button
+            {
+                Text = "Submit Feedback",
+                AutoSize = false,
+                Size = new Size(card.Width - card.Padding.Horizontal, 40),
+                Location = new Point(0, y),
+                BackColor = Color.FromArgb(24, 24, 32),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btnSubmit.FlatAppearance.BorderSize = 0;
+            btnSubmit.MouseEnter += (s, e) => btnSubmit.BackColor = Color.FromArgb(34, 34, 44);
+            btnSubmit.MouseDown += (s, e) => btnSubmit.BackColor = Color.FromArgb(18, 18, 26);
+            btnSubmit.MouseLeave += (s, e) => btnSubmit.BackColor = Color.FromArgb(24, 24, 32);
+            btnSubmit.Resize += (s, e) => btnSubmit.Region = new Region(RoundedRect(new Rectangle(0, 0, btnSubmit.Width, btnSubmit.Height), 10));
+            card.Controls.Add(btnSubmit);
+
+            btnSubmit.Click += (s, e) =>
+            {
+                string type = (cmbType.SelectedIndex > 0) ? (cmbType.SelectedItem as string) : null;
+                string msg = (txtMsg.ForeColor == Color.Gray) ? string.Empty : (txtMsg.Text ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(type))
+                {
+                    MessageBox.Show("Please select a feedback type.", "Feedback", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(msg))
+                {
+                    MessageBox.Show("Please enter your feedback message.", "Feedback", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                try
+                {
+                    repo.Insert(type, msg, userName);
+                    MessageBox.Show("Thank you for your feedback!", "Feedback", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    cmbType.SelectedIndex = 0;
+                    txtMsg.Text = "Share your thoughts…";
+                    txtMsg.ForeColor = Color.Gray;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Unable to save feedback. " + ex.Message, "Feedback", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            return page;
+        }
+
+        // =========================================================
+        //  MODAL FORM FOR FEEDBACK SUBMISSION
+        // =========================================================
+        private void ShowFeedbackModal(string userName)
+        {
+            using (var f = new FeedbackForm(userName))
+            {
+                f.StartPosition = FormStartPosition.CenterParent;
+                f.ShowDialog(this);
+            }
         }
 
         // ===== Requirements Page =====
@@ -918,6 +1162,7 @@ namespace BarangayanEMS
             return page;
         }
 
+        // Re-add shared drawing helpers
         private GraphicsPath RoundedRect(Rectangle rect, int radius)
         {
             int diameter = radius * 2;
@@ -930,7 +1175,6 @@ namespace BarangayanEMS
             return path;
         }
 
-        // Small per-icon vertical tweak so glyphs with different font baselines look visually centered
         private static float GetIconYOffset(string icon)
         {
             if (string.IsNullOrWhiteSpace(icon)) return 0f;
@@ -942,6 +1186,253 @@ namespace BarangayanEMS
                     return -1.8f;
                 default:
                     return -0.6f; // subtle lift for other emoji to appear visually centered
+            }
+        }
+
+        // Modern About page per spec
+        private Panel CreateAboutPage()
+        {
+            Panel page = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255),
+                Visible = false
+            };
+            EnableDoubleBuffer(page);
+
+            // Centered card host
+            Panel card = new Panel
+            {
+                Size = new Size(720, 420),
+                BackColor = Color.FromArgb(252, 253, 255), // soft light background
+                Padding = new Padding(28, 26, 28, 26)
+            };
+            EnableDoubleBuffer(card);
+
+            int corner = 18;
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, corner))
+                using (SolidBrush fill = new SolidBrush(card.BackColor))
+                using (Pen border = new Pen(Color.FromArgb(230, 236, 255)))
+                using (SolidBrush shadow = new SolidBrush(Color.FromArgb(36, 17, 24, 39)))
+                {
+                    // soft shadow offset
+                    e.Graphics.FillPath(shadow, RoundedRect(new Rectangle(rect.X + 3, rect.Y + 3, rect.Width, rect.Height), corner));
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            };
+            card.Resize += (s, e) => card.Region = new Region(RoundedRect(new Rectangle(0, 0, card.Width, card.Height), corner));
+            card.Region = new Region(RoundedRect(new Rectangle(0, 0, card.Width, card.Height), corner));
+
+            // Responsive centering
+            page.Resize += (s, e) =>
+            {
+                card.Location = new Point((page.Width - card.Width) / 2, Math.Max(90, (page.Height - card.Height) / 2));
+            };
+            card.Location = new Point((page.Width - card.Width) / 2, Math.Max(90, (page.Height - card.Height) / 2));
+            page.Controls.Add(card);
+
+            // Header section
+            Label lblTitle = new Label
+            {
+                AutoSize = false,
+                Text = "About Barangayan E Management System",
+                Font = new Font("Segoe UI Semibold", 18f),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                Height = 42
+            };
+            card.Controls.Add(lblTitle);
+
+            Label lblSubtitle = new Label
+            {
+                AutoSize = false,
+                Text = "Empowering communities through digital innovation and accessible government services",
+                Font = new Font("Segoe UI", 10f),
+                ForeColor = Color.FromArgb(120, 120, 120),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                Height = 34
+            };
+            card.Controls.Add(lblSubtitle);
+
+            // Content section two-column
+            Panel contentRow = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent,
+                Padding = new Padding(8, 12, 8, 8)
+            };
+            card.Controls.Add(contentRow);
+
+            // Left column
+            Panel leftCol = new Panel
+            {
+                Dock = DockStyle.Left,
+                Width = card.Width / 2 - 12,
+                BackColor = Color.Transparent
+            };
+            contentRow.Controls.Add(leftCol);
+            contentRow.Resize += (s, e) => leftCol.Width = contentRow.Width / 2 - 12;
+
+            Label missionHeader = new Label
+            {
+                AutoSize = true,
+                Text = "Our Mission",
+                Font = new Font("Segoe UI Semibold", 12.5f),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(8, 8)
+            };
+            leftCol.Controls.Add(missionHeader);
+
+            Label missionBody = new Label
+            {
+                AutoSize = false,
+                Text = "Barangayan EMS streamlines local services, fosters transparency, and delivers inclusive, citizen-centered digital governance.",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.FromArgb(90, 90, 90),
+                Location = new Point(8, missionHeader.Bottom + 6),
+                Size = new Size(leftCol.Width - 16, 48)
+            };
+            leftCol.Controls.Add(missionBody);
+            leftCol.Resize += (s, e) => missionBody.Size = new Size(leftCol.Width - 16, missionBody.Height);
+
+            // Bulleted list with green check/dot
+            FlowLayoutPanel bulletList = new FlowLayoutPanel
+            {
+                Location = new Point(8, missionBody.Bottom + 10),
+                Size = new Size(leftCol.Width - 16, leftCol.Height - (missionBody.Bottom + 20)),
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+            leftCol.Controls.Add(bulletList);
+            leftCol.Resize += (s, e) => bulletList.Size = new Size(leftCol.Width - 16, leftCol.Height - (missionBody.Bottom + 20));
+
+            bulletList.Controls.Add(CreateBullet("Accessible to all residents"));
+            bulletList.Controls.Add(CreateBullet("Multi-language support"));
+            bulletList.Controls.Add(CreateBullet("Secure and transparent"));
+
+            // Right column
+            Panel rightCol = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+            contentRow.Controls.Add(rightCol);
+
+            // Logo/seal
+            IconPictureBox logo = new IconPictureBox        
+            {
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Size = new Size(160, 160)
+            };
+            try
+            {
+                string sealBase64 = null;
+                var iconsType = AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType("BarangayanEMS.Icons") ?? a.GetType("Icons"))
+                    .FirstOrDefault(t => t != null);
+                if (iconsType != null)
+                {
+                    var field = iconsType.GetField("seal", BindingFlags.Public | BindingFlags.Static);
+                    sealBase64 = field?.GetValue(null) as string;
+                }
+
+                if (!string.IsNullOrWhiteSpace(sealBase64))
+                {
+                    logo.Base64 = sealBase64;
+                }
+                else
+                {
+                    // Fallback: try to load a local image if present
+                    string assetsSeal = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "seal.png");
+                    string resourcesSeal = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "seal.png");
+                    string imgPath = File.Exists(assetsSeal) ? assetsSeal : (File.Exists(resourcesSeal) ? resourcesSeal : null);
+                    if (!string.IsNullOrEmpty(imgPath))
+                    {
+                        using (var img = Image.FromFile(imgPath))
+                        {
+                            logo.Image = new Bitmap(img);
+                        }
+                    }
+                }
+            }
+            catch { /* ignore if base64 not available */ }
+            rightCol.Controls.Add(logo);
+
+            // Title/sub under logo
+            Label titleRight = new Label
+            {
+                AutoSize = false,
+                Text = "Serving the Community",
+                Font = new Font("Segoe UI Semibold", 11.5f),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Width = rightCol.Width
+            };
+            rightCol.Controls.Add(titleRight);
+
+            Label subRight = new Label
+            {
+                AutoSize = false,
+                Text = "Digital governance for a better tomorrow",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.DimGray,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Width = rightCol.Width
+            };
+            rightCol.Controls.Add(subRight);
+
+            // Center logo and texts vertically
+            rightCol.Resize += (s, e) =>
+            {
+                logo.Location = new Point((rightCol.Width - logo.Width) / 2, Math.Max(12, (rightCol.Height - logo.Height) / 2 - 30));
+                titleRight.Location = new Point(0, logo.Bottom + 12);
+                titleRight.Width = rightCol.Width;
+                subRight.Location = new Point(0, titleRight.Bottom + 2);
+                subRight.Width = rightCol.Width;
+            };
+
+            return page;
+
+            // Local helper for bullets
+            Label CreateBullet(string text)
+            {
+                Panel row = new Panel { Size = new Size(bulletList.Width - 6, 28), BackColor = Color.Transparent };
+                row.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (SolidBrush b = new SolidBrush(Color.FromArgb(32, 191, 85)))
+                    {
+                        e.Graphics.FillEllipse(b, 4, 8, 12, 12);
+                    }
+                };
+                Label lbl = new Label
+                {
+                    AutoSize = false,
+                    Text = text,
+                    Font = new Font("Segoe UI", 9.6f),
+                    ForeColor = Color.FromArgb(70, 70, 70),
+                    Location = new Point(24, 6),
+                    Size = new Size(row.Width - 28, 20),
+                    BackColor = Color.Transparent
+                };
+                row.Controls.Add(lbl);
+                bulletList.Resize += (s, e) => { row.Width = bulletList.Width - 6; lbl.Size = new Size(row.Width - 28, 20); };
+                // Return a container label for FlowLayoutPanel compatibility
+                Label host = new Label { AutoSize = false, Size = row.Size, BackColor = Color.Transparent };
+                host.Controls.Add(row);
+                row.Location = new Point(0, 0);
+                return host;
             }
         }
 
@@ -1574,6 +2065,7 @@ namespace BarangayanEMS
                     _txtSearch.ForeColor = Color.Black;
                 }
             };
+
             _txtSearch.LostFocus += (s, e) =>
             {
                 if (string.IsNullOrWhiteSpace(_txtSearch.Text))
