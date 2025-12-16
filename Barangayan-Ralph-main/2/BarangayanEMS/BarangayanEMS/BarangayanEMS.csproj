@@ -119,6 +119,7 @@
     <Compile Include="Dashboard\DashboardForm.Designer.cs">
       <DependentUpon>DashboardForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Data\BlotterRepo.cs" />
     <Compile Include="Data\DatabaseBootstrapper.cs" />
     <Compile Include="Data\DocumentRequestRepository.cs" />
     <Compile Include="Data\PasswordHasher.cs" />

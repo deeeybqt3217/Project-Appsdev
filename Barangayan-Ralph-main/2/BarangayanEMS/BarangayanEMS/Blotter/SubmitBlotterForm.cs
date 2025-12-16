@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
+using BarangayanEMS.Data;
 
 namespace BarangayanEMS
 {
@@ -11,6 +13,17 @@ namespace BarangayanEMS
         private Panel _footerBar;
         private Button _btnSubmit;
         private Button _btnCancel;
+
+        // Field refs
+        private ComboBox _cmbReportType;
+        private ComboBox _cmbPriority;
+        private TextBox _txtComplainant;
+        private TextBox _txtRespondent;
+        private DateTimePicker _dtpIncident;
+        private ComboBox _cmbBarangay;
+        private TextBox _txtLocation;
+        private TextBox _txtDescription;
+        private TextBox _txtWitnesses;
 
         internal SubmitBlotterForm()
         {
@@ -68,33 +81,56 @@ namespace BarangayanEMS
             content.Controls.Add(CreateSubheading("Fill out the form below to submit a blotter report to the barangay authorities.", ref y));
 
             // Fields
-            content.Controls.Add(CreateLabeledControl("Report Type *", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 }, ref y));
-            content.Controls.Add(CreateLabeledControl("Priority Level *", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 }, ref y));
+            _cmbReportType = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 };
+            _cmbReportType.Items.AddRange(new object[]
+            {
+                "Theft",
+                "Physical Injury",
+                "Domestic Dispute",
+                "Noise Complaint",
+                "Vandalism",
+                "Threat / Harassment",
+                "Property Damage",
+                "Other"
+            });
+            content.Controls.Add(CreateLabeledControl("Report Type *", _cmbReportType, ref y));
 
-            content.Controls.Add(CreateLabeledControl("Complainant Name *", new TextBox { Width = 360 }, ref y));
-            content.Controls.Add(CreateLabeledControl("Respondent Name *", new TextBox { Width = 360 }, ref y));
+            _cmbPriority = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 };
+            _cmbPriority.Items.AddRange(new object[] { "Low", "Medium", "High", "Urgent" });
+            content.Controls.Add(CreateLabeledControl("Priority Level *", _cmbPriority, ref y));
 
-            var dtpIncident = new DateTimePicker
+            _txtComplainant = new TextBox { Width = 360 };
+            content.Controls.Add(CreateLabeledControl("Complainant Name *", _txtComplainant, ref y));
+
+            _txtRespondent = new TextBox { Width = 360 };
+            content.Controls.Add(CreateLabeledControl("Respondent Name *", _txtRespondent, ref y));
+
+            _dtpIncident = new DateTimePicker
             {
                 Format = DateTimePickerFormat.Custom,
                 CustomFormat = "MMM dd, yyyy",
                 Width = 180
             };
-            content.Controls.Add(CreateLabeledControl("Incident Date *", dtpIncident, ref y));
+            content.Controls.Add(CreateLabeledControl("Incident Date *", _dtpIncident, ref y));
 
-            content.Controls.Add(CreateLabeledControl("Barangay *", new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 }, ref y));
-            content.Controls.Add(CreateLabeledControl("Incident Location *", new TextBox { Width = 360 }, ref y));
+            _cmbBarangay = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 240 };
+            _cmbBarangay.Items.AddRange(CebuCityBarangays());
+            content.Controls.Add(CreateLabeledControl("Barangay *", _cmbBarangay, ref y));
 
-            var txtDescription = new TextBox
+            _txtLocation = new TextBox { Width = 360 };
+            content.Controls.Add(CreateLabeledControl("Incident Location *", _txtLocation, ref y));
+
+            _txtDescription = new TextBox
             {
                 Multiline = true,
                 Width = 360,
                 Height = 120,
                 ScrollBars = ScrollBars.Vertical
             };
-            content.Controls.Add(CreateLabeledControl("Description *", txtDescription, ref y));
+            content.Controls.Add(CreateLabeledControl("Description *", _txtDescription, ref y));
 
-            content.Controls.Add(CreateLabeledControl("Witnesses (Optional)", new TextBox { Width = 360 }, ref y));
+            _txtWitnesses = new TextBox { Width = 360 };
+            content.Controls.Add(CreateLabeledControl("Witnesses (Optional)", _txtWitnesses, ref y));
 
             _contentScrollHost.Resize += (s, e) =>
             {
@@ -135,7 +171,7 @@ namespace BarangayanEMS
             };
             _btnCancel.FlatAppearance.BorderColor = Color.FromArgb(203, 213, 225);
             _btnCancel.FlatAppearance.BorderSize = 1;
-            _btnCancel.Click += (s, e) => Close();
+            _btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
             _btnSubmit = new Button
             {
@@ -158,9 +194,104 @@ namespace BarangayanEMS
 
         private void HandleSubmit(object sender, EventArgs e)
         {
-            // Hook to your validation and persistence
-            MessageBox.Show("Blotter report submitted.", "Submit", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            Close();
+            // Validate required
+            string[] errors = new[]
+            {
+                _cmbReportType.SelectedItem == null ? "Select a Report Type." : null,
+                _cmbPriority.SelectedItem == null ? "Select a Priority Level." : null,
+                string.IsNullOrWhiteSpace(_txtComplainant.Text) ? "Enter Complainant Name." : null,
+                string.IsNullOrWhiteSpace(_txtRespondent.Text) ? "Enter Respondent Name." : null,
+                _cmbBarangay.SelectedItem == null ? "Select a Barangay." : null,
+                string.IsNullOrWhiteSpace(_txtLocation.Text) ? "Enter Incident Location." : null,
+                string.IsNullOrWhiteSpace(_txtDescription.Text) ? "Enter Description." : null,
+            }.Where(x => x != null).ToArray();
+
+            if (errors.Length > 0)
+            {
+                MessageBox.Show(string.Join("\n", errors), "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var repo = new BlotterRepository();
+            var rec = new BlotterRepository.BlotterRecord
+            {
+                ReportType = _cmbReportType.SelectedItem.ToString(),
+                PriorityLevel = _cmbPriority.SelectedItem.ToString(),
+                Barangay = _cmbBarangay.SelectedItem.ToString(),
+                Complainant = _txtComplainant.Text.Trim(),
+                Respondent = _txtRespondent.Text.Trim(),
+                IncidentDate = _dtpIncident.Value.Date,
+                IncidentLocation = _txtLocation.Text.Trim(),
+                Description = _txtDescription.Text.Trim(),
+                Witnesses = _txtWitnesses.Text.Trim(),
+                Status = "Pending",
+                DateReported = DateTime.Today
+            };
+
+            try
+            {
+                string caseNo = repo.Insert(rec);
+                MessageBox.Show("Blotter report submitted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Reset form fields
+                _cmbReportType.SelectedIndex = -1;
+                _cmbPriority.SelectedIndex = -1;
+                _txtComplainant.Text = string.Empty;
+                _txtRespondent.Text = string.Empty;
+                _dtpIncident.Value = DateTime.Today;
+                _cmbBarangay.SelectedIndex = -1;
+                _txtLocation.Text = string.Empty;
+                _txtDescription.Text = string.Empty;
+                _txtWitnesses.Text = string.Empty;
+                // Signal parent to refresh
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to submit report.\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private string[] CebuCityBarangays()
+        {
+            // Partial list for brevity; can be expanded as needed
+            return new[]
+            {
+                "Lahug",
+                "Mabolo",
+                "Guadalupe",
+                "Talamban",
+                "Banilad",
+                "Apas",
+                "Busay",
+                "Kamputhaw",
+                "Capitol Site",
+                "Tisa",
+                "Labangon",
+                "Sawang Calero",
+                "Pahina Central",
+                "Sambag I",
+                "Sambag II",
+                "Tinago",
+                "Carreta",
+                "Hipodromo",
+                "Pari-an",
+                "San Nicolas Proper",
+                "Inayawan",
+                "Pardo",
+                "Bulacao",
+                "Basak San Nicolas",
+                "Basak Pardo",
+                "Mambaling",
+                "Kinasang-an",
+                "Punta Princesa",
+                "Calamba",
+                "Cogon Ramos",
+                "Buhisan",
+                "To-ong",
+                "Pamutan",
+                "Sinsin",
+            };
         }
 
         private Control CreateHeading(string text, Font font, ref int y)
@@ -217,4 +348,4 @@ namespace BarangayanEMS
             return host;
         }
     }
-}                       
+}
