@@ -60,18 +60,23 @@ namespace BarangayanEMS
             this.pnlRoot = new GradientPanel();
             this.pnlSidebar = new GradientPanel();
             this.navDashboard = new Panel();
+            this.navDashboard.Name = "navDashboard";
             this.lblNavDashboardIcon = new Label();
             this.lblNavDashboard = new Label();
             this.navServices = new Panel();
+            this.navServices.Name = "navServices";
             this.lblNavServicesIcon = new Label();
             this.lblNavServices = new Label();
             this.navRequirements = new Panel();
+            this.navRequirements.Name = "navRequirements";
             this.lblNavRequirementsIcon = new Label();
             this.lblNavRequirements = new Label();
             this.navFeedback = new Panel();
+            this.navFeedback.Name = "navFeedback";
             this.lblNavFeedbackIcon = new Label();
             this.lblNavFeedback = new Label();
             this.navAbout = new Panel();
+            this.navAbout.Name = "navAbout";
             this.lblNavAboutIcon = new Label();
             this.lblNavAbout = new Label();
             this.lblSystem = new Label();
@@ -88,6 +93,7 @@ namespace BarangayanEMS
             this.txtSearch = new TextBox();
             this.picUserAvatar = new PictureBox();
             this.pnlContentHost = new Panel();
+            this.pnlContentHost.Name = "pnlContentHost";
 
             // ==================== pnlRoot ====================
             this.pnlRoot.Dock = DockStyle.Fill;
