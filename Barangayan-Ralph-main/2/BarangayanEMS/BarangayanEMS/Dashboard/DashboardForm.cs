@@ -423,7 +423,7 @@ namespace BarangayanEMS
             _pageServices = CreateServicesPage();
             _pageRequirements = CreateRequirementsPage();
             _pageFeedback = CreateFeedbackPage(userName);
-            _pageAbout = CreatePlaceholderPage("About Barangayan EMS", Color.FromArgb(139, 92, 246));
+            _pageAbout = CreateAboutPage();
 
             EnableDoubleBuffer(_pageServices);
             EnableDoubleBuffer(_pageRequirements);
@@ -1162,6 +1162,7 @@ namespace BarangayanEMS
             return page;
         }
 
+        // Re-add shared drawing helpers
         private GraphicsPath RoundedRect(Rectangle rect, int radius)
         {
             int diameter = radius * 2;
@@ -1174,7 +1175,6 @@ namespace BarangayanEMS
             return path;
         }
 
-        // Small per-icon vertical tweak so glyphs with different font baselines look visually centered
         private static float GetIconYOffset(string icon)
         {
             if (string.IsNullOrWhiteSpace(icon)) return 0f;
@@ -1186,6 +1186,253 @@ namespace BarangayanEMS
                     return -1.8f;
                 default:
                     return -0.6f; // subtle lift for other emoji to appear visually centered
+            }
+        }
+
+        // Modern About page per spec
+        private Panel CreateAboutPage()
+        {
+            Panel page = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255),
+                Visible = false
+            };
+            EnableDoubleBuffer(page);
+
+            // Centered card host
+            Panel card = new Panel
+            {
+                Size = new Size(720, 420),
+                BackColor = Color.FromArgb(252, 253, 255), // soft light background
+                Padding = new Padding(28, 26, 28, 26)
+            };
+            EnableDoubleBuffer(card);
+
+            int corner = 18;
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, corner))
+                using (SolidBrush fill = new SolidBrush(card.BackColor))
+                using (Pen border = new Pen(Color.FromArgb(230, 236, 255)))
+                using (SolidBrush shadow = new SolidBrush(Color.FromArgb(36, 17, 24, 39)))
+                {
+                    // soft shadow offset
+                    e.Graphics.FillPath(shadow, RoundedRect(new Rectangle(rect.X + 3, rect.Y + 3, rect.Width, rect.Height), corner));
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            };
+            card.Resize += (s, e) => card.Region = new Region(RoundedRect(new Rectangle(0, 0, card.Width, card.Height), corner));
+            card.Region = new Region(RoundedRect(new Rectangle(0, 0, card.Width, card.Height), corner));
+
+            // Responsive centering
+            page.Resize += (s, e) =>
+            {
+                card.Location = new Point((page.Width - card.Width) / 2, Math.Max(90, (page.Height - card.Height) / 2));
+            };
+            card.Location = new Point((page.Width - card.Width) / 2, Math.Max(90, (page.Height - card.Height) / 2));
+            page.Controls.Add(card);
+
+            // Header section
+            Label lblTitle = new Label
+            {
+                AutoSize = false,
+                Text = "About Barangayan E Management System",
+                Font = new Font("Segoe UI Semibold", 18f),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                Height = 42
+            };
+            card.Controls.Add(lblTitle);
+
+            Label lblSubtitle = new Label
+            {
+                AutoSize = false,
+                Text = "Empowering communities through digital innovation and accessible government services",
+                Font = new Font("Segoe UI", 10f),
+                ForeColor = Color.FromArgb(120, 120, 120),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Top,
+                Height = 34
+            };
+            card.Controls.Add(lblSubtitle);
+
+            // Content section two-column
+            Panel contentRow = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent,
+                Padding = new Padding(8, 12, 8, 8)
+            };
+            card.Controls.Add(contentRow);
+
+            // Left column
+            Panel leftCol = new Panel
+            {
+                Dock = DockStyle.Left,
+                Width = card.Width / 2 - 12,
+                BackColor = Color.Transparent
+            };
+            contentRow.Controls.Add(leftCol);
+            contentRow.Resize += (s, e) => leftCol.Width = contentRow.Width / 2 - 12;
+
+            Label missionHeader = new Label
+            {
+                AutoSize = true,
+                Text = "Our Mission",
+                Font = new Font("Segoe UI Semibold", 12.5f),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(8, 8)
+            };
+            leftCol.Controls.Add(missionHeader);
+
+            Label missionBody = new Label
+            {
+                AutoSize = false,
+                Text = "Barangayan EMS streamlines local services, fosters transparency, and delivers inclusive, citizen-centered digital governance.",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.FromArgb(90, 90, 90),
+                Location = new Point(8, missionHeader.Bottom + 6),
+                Size = new Size(leftCol.Width - 16, 48)
+            };
+            leftCol.Controls.Add(missionBody);
+            leftCol.Resize += (s, e) => missionBody.Size = new Size(leftCol.Width - 16, missionBody.Height);
+
+            // Bulleted list with green check/dot
+            FlowLayoutPanel bulletList = new FlowLayoutPanel
+            {
+                Location = new Point(8, missionBody.Bottom + 10),
+                Size = new Size(leftCol.Width - 16, leftCol.Height - (missionBody.Bottom + 20)),
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+            leftCol.Controls.Add(bulletList);
+            leftCol.Resize += (s, e) => bulletList.Size = new Size(leftCol.Width - 16, leftCol.Height - (missionBody.Bottom + 20));
+
+            bulletList.Controls.Add(CreateBullet("Accessible to all residents"));
+            bulletList.Controls.Add(CreateBullet("Multi-language support"));
+            bulletList.Controls.Add(CreateBullet("Secure and transparent"));
+
+            // Right column
+            Panel rightCol = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+            contentRow.Controls.Add(rightCol);
+
+            // Logo/seal
+            IconPictureBox logo = new IconPictureBox        
+            {
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Size = new Size(160, 160)
+            };
+            try
+            {
+                string sealBase64 = null;
+                var iconsType = AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType("BarangayanEMS.Icons") ?? a.GetType("Icons"))
+                    .FirstOrDefault(t => t != null);
+                if (iconsType != null)
+                {
+                    var field = iconsType.GetField("seal", BindingFlags.Public | BindingFlags.Static);
+                    sealBase64 = field?.GetValue(null) as string;
+                }
+
+                if (!string.IsNullOrWhiteSpace(sealBase64))
+                {
+                    logo.Base64 = sealBase64;
+                }
+                else
+                {
+                    // Fallback: try to load a local image if present
+                    string assetsSeal = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "seal.png");
+                    string resourcesSeal = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "seal.png");
+                    string imgPath = File.Exists(assetsSeal) ? assetsSeal : (File.Exists(resourcesSeal) ? resourcesSeal : null);
+                    if (!string.IsNullOrEmpty(imgPath))
+                    {
+                        using (var img = Image.FromFile(imgPath))
+                        {
+                            logo.Image = new Bitmap(img);
+                        }
+                    }
+                }
+            }
+            catch { /* ignore if base64 not available */ }
+            rightCol.Controls.Add(logo);
+
+            // Title/sub under logo
+            Label titleRight = new Label
+            {
+                AutoSize = false,
+                Text = "Serving the Community",
+                Font = new Font("Segoe UI Semibold", 11.5f),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Width = rightCol.Width
+            };
+            rightCol.Controls.Add(titleRight);
+
+            Label subRight = new Label
+            {
+                AutoSize = false,
+                Text = "Digital governance for a better tomorrow",
+                Font = new Font("Segoe UI", 9.5f),
+                ForeColor = Color.DimGray,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Width = rightCol.Width
+            };
+            rightCol.Controls.Add(subRight);
+
+            // Center logo and texts vertically
+            rightCol.Resize += (s, e) =>
+            {
+                logo.Location = new Point((rightCol.Width - logo.Width) / 2, Math.Max(12, (rightCol.Height - logo.Height) / 2 - 30));
+                titleRight.Location = new Point(0, logo.Bottom + 12);
+                titleRight.Width = rightCol.Width;
+                subRight.Location = new Point(0, titleRight.Bottom + 2);
+                subRight.Width = rightCol.Width;
+            };
+
+            return page;
+
+            // Local helper for bullets
+            Label CreateBullet(string text)
+            {
+                Panel row = new Panel { Size = new Size(bulletList.Width - 6, 28), BackColor = Color.Transparent };
+                row.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (SolidBrush b = new SolidBrush(Color.FromArgb(32, 191, 85)))
+                    {
+                        e.Graphics.FillEllipse(b, 4, 8, 12, 12);
+                    }
+                };
+                Label lbl = new Label
+                {
+                    AutoSize = false,
+                    Text = text,
+                    Font = new Font("Segoe UI", 9.6f),
+                    ForeColor = Color.FromArgb(70, 70, 70),
+                    Location = new Point(24, 6),
+                    Size = new Size(row.Width - 28, 20),
+                    BackColor = Color.Transparent
+                };
+                row.Controls.Add(lbl);
+                bulletList.Resize += (s, e) => { row.Width = bulletList.Width - 6; lbl.Size = new Size(row.Width - 28, 20); };
+                // Return a container label for FlowLayoutPanel compatibility
+                Label host = new Label { AutoSize = false, Size = row.Size, BackColor = Color.Transparent };
+                host.Controls.Add(row);
+                row.Location = new Point(0, 0);
+                return host;
             }
         }
 
@@ -1818,6 +2065,7 @@ namespace BarangayanEMS
                     _txtSearch.ForeColor = Color.Black;
                 }
             };
+
             _txtSearch.LostFocus += (s, e) =>
             {
                 if (string.IsNullOrWhiteSpace(_txtSearch.Text))
