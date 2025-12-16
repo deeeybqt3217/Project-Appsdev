@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using BarangayanEMS.Data;
 
 namespace BarangayanEMS
 {
     internal sealed class BlotterReportForm : Form
     {
-        private readonly List<BlotterReport> _items = new List<BlotterReport>();
         private readonly BindingSource _binding = new BindingSource();
         private readonly DataGridView _grid;
         private readonly TextBox _txtSearch;
-        private BlotterReport _selected;
+        private BlotterRepository.BlotterRecord _selected;
+        private readonly BlotterRepository _repo = new BlotterRepository();
+        private List<BlotterRepository.BlotterRecord> _items = new List<BlotterRepository.BlotterRecord>();
 
         internal BlotterReportForm()
         {
@@ -118,17 +120,18 @@ namespace BarangayanEMS
             _grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(55, 65, 81);
             _grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 8, 6, 8);
 
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterReport.CaseNo), HeaderText = "Case No.", Width = 100 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterReport.IncidentType), HeaderText = "Incident Type", Width = 170 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterReport.Complainant), HeaderText = "Complainant", Width = 170 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterReport.DateReported), HeaderText = "Date Reported", Width = 130, DefaultCellStyle = new DataGridViewCellStyle { Format = "yyyy-MM-dd" } });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterReport.Status), HeaderText = "Status", Width = 150 });
-            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterReport.Actions), HeaderText = "Actions", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.CaseNo), HeaderText = "Case No.", Width = 100 });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.ReportType), HeaderText = "Report Type", Width = 160 });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.PriorityLevel), HeaderText = "Priority Level", Width = 120 });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.Complainant), HeaderText = "Complainant Name", Width = 180 });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.IncidentDate), HeaderText = "Incident Date", Width = 130, DefaultCellStyle = new DataGridViewCellStyle { Format = "yyyy-MM-dd" } });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.Barangay), HeaderText = "Barangay", Width = 160 });
+            _grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(BlotterRepository.BlotterRecord.Status), HeaderText = "Status", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill });
 
             _grid.SelectionChanged += (s, e) => UpdateSelection();
             _grid.CellDoubleClick += (s, e) => EditSelected();
 
-            Seed();
+            LoadData();
         }
 
         private Button CreateActionButton(string text, Color bg)
@@ -136,40 +139,38 @@ namespace BarangayanEMS
             return new Button { Text = text, AutoSize = true, Height = 36, BackColor = bg, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Margin = new Padding(0, 0, 12, 0) };
         }
 
-        private void Seed()
+        private void LoadData()
         {
-            var rng = new Random();
-            _items.Clear();
-            string[] types = { "Theft", "Physical Injury", "Vandalism", "Harassment" };
-            for (int i = 1; i <= 25; i++)
+            try
             {
-                _items.Add(new BlotterReport
-                {
-                    CaseNo = $"BL-{(1000 + i):D4}",
-                    IncidentType = types[rng.Next(types.Length)],
-                    Complainant = $"Complainant {rng.Next(20, 100)}",
-                    DateReported = DateTime.Today.AddDays(-rng.Next(0, 30)),
-                    Status = (i % 5 == 0) ? "Under Investigation" : (i % 7 == 0) ? "For Pickup" : "Pending",
-                    Actions = "View Details, Edit Status"
-                });
+                _items = _repo.GetAll();
+                _binding.DataSource = _items;
+                _grid.DataSource = _binding;
+                UpdateSelection();
             }
-            _binding.DataSource = _items;
-            _grid.DataSource = _binding;
-            UpdateSelection();
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to load blotter reports.\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void ApplyFilter(string q)
         {
-            _binding.DataSource = string.IsNullOrWhiteSpace(q)
+            if (_items == null) return;
+            var src = string.IsNullOrWhiteSpace(q)
                 ? _items
                 : _items.Where(x => (x.CaseNo ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
-                                 || (x.IncidentType ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
-                                 || (x.Complainant ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+                                 || (x.ReportType ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                                 || (x.PriorityLevel ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                                 || (x.Barangay ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                                 || (x.Complainant ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                                 || (x.IncidentLocation ?? "").IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            _binding.DataSource = src;
         }
 
         private void UpdateSelection()
         {
-            _selected = _grid.SelectedRows.Count > 0 ? _grid.SelectedRows[0].DataBoundItem as BlotterReport : null;
+            _selected = _grid.SelectedRows.Count > 0 ? _grid.SelectedRows[0].DataBoundItem as BlotterRepository.BlotterRecord : null;
         }
 
         private void NewReport()
@@ -177,7 +178,12 @@ namespace BarangayanEMS
             using (var f = new SubmitBlotterForm())
             {
                 f.StartPosition = FormStartPosition.CenterParent;
-                f.ShowDialog(this);
+                var res = f.ShowDialog(this);
+                if (res == DialogResult.OK)
+                {
+                    LoadData();
+                    _grid.Refresh();
+                }
             }
         }
 
@@ -187,31 +193,44 @@ namespace BarangayanEMS
             using (var f = new SubmitBlotterForm())
             {
                 f.StartPosition = FormStartPosition.CenterParent;
-                f.ShowDialog(this);
+                var res = f.ShowDialog(this);
+                if (res == DialogResult.OK)
+                {
+                    LoadData();
+                    _grid.Refresh();
+                }
             }
         }
 
         private void ViewSelected()
         {
             if (_selected == null) return;
-            MessageBox.Show($"Case: {_selected.CaseNo}\nType: {_selected.IncidentType}\nComplainant: {_selected.Complainant}\nDate: {_selected.DateReported:yyyy-MM-dd}\nStatus: {_selected.Status}", "Blotter Report", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(
+                "Case: " + _selected.CaseNo +
+                "\nType: " + _selected.ReportType +
+                "\nPriority: " + _selected.PriorityLevel +
+                "\nBarangay: " + _selected.Barangay +
+                "\nComplainant: " + _selected.Complainant +
+                "\nDate: " + _selected.DateReported.ToString("yyyy-MM-dd") +
+                "\nStatus: " + _selected.Status,
+                "Blotter Report", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void DeleteSelected()
         {
             if (_selected == null) return;
-            _items.Remove(_selected);
-            ApplyFilter(_txtSearch.Text);
+            if (MessageBox.Show("Delete selected report?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                try
+                {
+                    _repo.Delete(_selected.CaseNo);
+                    LoadData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to delete report.\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
-    }
-
-    internal sealed class BlotterReport
-    {
-        public string CaseNo { get; set; }
-        public string IncidentType { get; set; }
-        public string Complainant { get; set; }
-        public DateTime DateReported { get; set; }
-        public string Status { get; set; }
-        public string Actions { get; set; }
     }
 }

@@ -77,6 +77,22 @@ CREATE TABLE IF NOT EXISTS DocumentRequests (
     Copies INTEGER NOT NULL DEFAULT 1,
     AdditionalRequirements TEXT
 );
+
+CREATE TABLE IF NOT EXISTS BlotterReports (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CaseNo TEXT NOT NULL UNIQUE,
+    ReportType TEXT NOT NULL,
+    PriorityLevel TEXT NOT NULL,
+    Barangay TEXT NOT NULL,
+    Complainant TEXT NOT NULL,
+    Respondent TEXT NOT NULL,
+    IncidentDate TEXT NOT NULL,
+    IncidentLocation TEXT NOT NULL,
+    Description TEXT NOT NULL,
+    Witnesses TEXT,
+    Status TEXT NOT NULL DEFAULT 'Pending',
+    DateReported TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 ";
                 command.ExecuteNonQuery();
             }
