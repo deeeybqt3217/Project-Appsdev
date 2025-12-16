@@ -421,7 +421,7 @@ namespace BarangayanEMS
 
             // ----- OTHER PAGES (PLACEHOLDERS) -----
             _pageServices = CreateServicesPage();
-            _pageRequirements = CreatePlaceholderPage("Requirements", Color.FromArgb(16, 185, 129));
+            _pageRequirements = CreateRequirementsPage();
             _pageFeedback = CreatePlaceholderPage("Feedback", Color.FromArgb(245, 158, 11));
             _pageAbout = CreatePlaceholderPage("About Barangayan EMS", Color.FromArgb(139, 92, 246));
 
@@ -435,6 +435,175 @@ namespace BarangayanEMS
             _contentHost.Controls.Add(_pageRequirements);
             _contentHost.Controls.Add(_pageFeedback);
             _contentHost.Controls.Add(_pageAbout);
+        }
+
+        // ===== Requirements Page =====
+        private Panel CreateRequirementsPage()
+        {
+            Panel page = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(246, 247, 255),
+                Visible = false
+            };
+            EnableDoubleBuffer(page);
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = "Requirements",
+                Font = new Font("Segoe UI Semibold", 22f),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(28, 26)
+            };
+            page.Controls.Add(lblTitle);
+
+            // Grid layout similar to the reference
+            TableLayoutPanel grid = new TableLayoutPanel
+            {
+                Location = new Point(28, 80),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                BackColor = Color.Transparent,
+                ColumnCount = 3,
+                RowCount = 2,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+            grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+            page.Controls.Add(grid);
+            page.Resize += (s, e) =>
+            {
+                grid.Size = new Size(Math.Max(300, page.Width - 56), Math.Max(220, page.Height - 120));
+            };
+            grid.Size = new Size(Math.Max(300, page.Width - 56), Math.Max(220, page.Height - 120));
+
+            // Cards data
+            var cards = new[]
+            {
+                new { Title = "Barangay Clearance", Accent = Color.FromArgb(77, 109, 242), Items = new[]{
+                    "Valid government-issued ID",
+                    "Cedula or Community Tax Certificate",
+                    "Barangay residency proof",
+                    "Processing fee: ₱30.00" }},
+                new { Title = "Business Permit", Accent = Color.FromArgb(130, 84, 245), Items = new[]{
+                    "DTI/SEC registration",
+                    "Barangay clearance",
+                    "Location clearance",
+                    "Fire safety inspection certificate",
+                    "Processing fee: ₱500.00" }},
+                new { Title = "Certificate of Indigency", Accent = Color.FromArgb(0, 168, 214), Items = new[]{
+                    "Valid government-issued ID",
+                    "Proof of low income/unemployment",
+                    "Barangay residency proof",
+                    "Processing fee: ₱20.00" }},
+                new { Title = "Building Permit", Accent = Color.FromArgb(16, 185, 129), Items = new[]{
+                    "Lot title or Tax Declaration",
+                    "Building plans (signed by architect)",
+                    "Structural design plans",
+                    "Barangay clearance",
+                    "Processing fee: ₱1,000.00" }},
+                new { Title = "Complaint Certificate", Accent = Color.FromArgb(245, 158, 11), Items = new[]{
+                    "Valid government-issued ID",
+                    "Incident report documentation",
+                    "Witness affidavits (if applicable)",
+                    "Processing fee: ₱50.00" }},
+                new { Title = "Community Tax Certificate", Accent = Color.FromArgb(139, 92, 246), Items = new[]{
+                    "Valid government-issued ID",
+                    "Proof of income (if employed)",
+                    "Barangay residency proof",
+                    "Processing fee: ₱5.00 - ₱50.00" }}
+            };
+
+            int idx = 0;
+            foreach (var c in cards)
+            {
+                var card = CreateRequirementCard(c.Title, c.Items, c.Accent);
+                grid.Controls.Add(card, idx % 3, idx / 3);
+                idx++;
+            }
+
+            return page;
+        }
+
+        private Panel CreateRequirementCard(string title, string[] items, Color accent)
+        {
+            Panel card = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(18),
+                BackColor = Color.Transparent
+            };
+            EnableDoubleBuffer(card);
+
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, card.Width - 1, card.Height - 1);
+                using (GraphicsPath path = RoundedRect(rect, 18))
+                using (SolidBrush fill = new SolidBrush(Color.White))
+                using (Pen border = new Pen(Color.FromArgb(228, 231, 255)))
+                {
+                    e.Graphics.FillPath(fill, path);
+                    e.Graphics.DrawPath(border, path);
+                }
+            };
+
+            // Accent focus border (hover)
+            bool hovered = false;
+            card.MouseEnter += (s, e) => { hovered = true; card.Invalidate(); };
+            card.MouseLeave += (s, e) => { hovered = false; card.Invalidate(); };
+            card.Paint += (s, e) =>
+            {
+                if (!hovered) return;
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(2, 2, card.Width - 5, card.Height - 5);
+                using (GraphicsPath path = RoundedRect(rect, 18))
+                using (Pen accentPen = new Pen(accent, 2))
+                {
+                    e.Graphics.DrawPath(accentPen, path);
+                }
+            };
+
+            Label lblTitle = new Label
+            {
+                AutoSize = true,
+                Text = title,
+                Font = new Font("Segoe UI Semibold", 12.5f),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(20, 16),
+                BackColor = Color.Transparent
+            };
+            card.Controls.Add(lblTitle);
+
+            // Bullet list
+            int y = lblTitle.Bottom + 10;
+            foreach (var item in items)
+            {
+                Label bullet = new Label
+                {
+                    AutoSize = true,
+                    Text = "• " + item,
+                    Font = new Font("Segoe UI", 9.6f),
+                    ForeColor = Color.FromArgb(80, 80, 80),
+                    Location = new Point(22, y),
+                    BackColor = Color.Transparent
+                };
+                card.Controls.Add(bullet);
+                y = bullet.Bottom + 6;
+            }
+
+            // Padding by setting a minimum size based on content
+            card.Resize += (s, e) =>
+            {
+                int minH = Math.Max(140, y + 16);
+                card.MinimumSize = new Size(0, minH);
+            };
+
+            return card;
         }
 
         // =========================================================
